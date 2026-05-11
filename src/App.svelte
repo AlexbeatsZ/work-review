@@ -5,6 +5,7 @@
   import Toast from './lib/components/Toast.svelte';
   import ConfirmDialog from './lib/components/ConfirmDialog.svelte';
   import Timeline from './routes/timeline/Timeline.svelte';
+  import Summary from './routes/timeline/Summary.svelte';
   import Settings from './routes/settings/Settings.svelte';
   import AvatarWindow from './routes/avatar/AvatarWindow.svelte';
   import { invoke } from '@tauri-apps/api/core';
@@ -83,6 +84,7 @@
   const routes = {
     '/': Timeline,
     '/timeline': Timeline,
+    '/timeline/summary': Summary,
     '/settings': Settings,
   };
 
