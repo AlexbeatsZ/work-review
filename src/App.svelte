@@ -7,7 +7,6 @@
   import Timeline from './routes/timeline/Timeline.svelte';
   import Summary from './routes/timeline/Summary.svelte';
   import Settings from './routes/settings/Settings.svelte';
-  import AvatarWindow from './routes/avatar/AvatarWindow.svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
   import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -16,8 +15,6 @@
   import { preloadAppIcons } from './lib/stores/iconCache.js';
 
   const appWindow = getCurrentWebviewWindow();
-  const currentWindowLabel = appWindow.label;
-  const isAvatarWindow = currentWindowLabel === 'avatar';
 
   // 視窗拖拽（Linux WebKitGTK 不支援 -webkit-app-region: drag，改用 Tauri API）
   let lastDragClick = 0;
@@ -167,13 +164,6 @@
     window.addEventListener('dragover', preventFileDrop);
     window.addEventListener('drop', preventFileDrop);
 
-    if (isAvatarWindow) {
-      return () => {
-        window.removeEventListener('dragover', preventFileDrop);
-        window.removeEventListener('drop', preventFileDrop);
-      };
-    }
-
     initializeLocale();
     unsubscribeLocale = locale.subscribe((nextLocale) => {
       applyLocaleToDocument(nextLocale);
@@ -293,9 +283,6 @@
   });
 </script>
 
-{#if isAvatarWindow}
-  <AvatarWindow />
-{:else}
 <div class="app-shell flex h-screen overflow-hidden relative">
   <div class="pointer-events-none absolute inset-0 z-0 opacity-80">
     <div class="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.14),transparent_62%)] dark:bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_62%)]"></div>
@@ -388,4 +375,3 @@
     </section>
   </div>
 </div>
-{/if}

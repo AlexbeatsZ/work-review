@@ -10,8 +10,6 @@ mod activity_classifier;
 mod analysis;
 mod autostart;
 mod avatar_engine;
-mod avatar_followup;
-mod avatar_input;
 mod commands;
 mod config;
 mod database;
@@ -32,13 +30,12 @@ mod telegram_bot;
 mod work_intelligence;
 
 use chrono;
-use config::{AppConfig, AvatarFollowupItem};
+use config::AppConfig;
 use database::Database;
 use once_cell::sync::OnceCell;
 use privacy::PrivacyFilter;
 use screenshot::ScreenshotService;
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -522,204 +519,6 @@ fn is_windows_system_dialog(active_window: &monitor::ActiveWindow) -> bool {
         .any(|rule| matches_windows_system_dialog_rule(active_window, rule))
 }
 
-const BREAK_REMINDER_BUFFER_MINUTES: u64 = 5;
-const BREAK_REMINDER_MESSAGE: &str = "该休息一下了，起来活动活动吧。";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BreakReminderPhase {
-    Counting,
-    Cooldown,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BreakReminderRuntime {
-    phase: BreakReminderPhase,
-    elapsed_ms: u64,
-    bubble_visible: bool,
-}
-
-impl BreakReminderRuntime {
-    fn new() -> Self {
-        Self {
-            phase: BreakReminderPhase::Counting,
-            elapsed_ms: 0,
-            bubble_visible: false,
-        }
-    }
-
-    fn reset(&mut self) {
-        self.phase = BreakReminderPhase::Counting;
-        self.elapsed_ms = 0;
-        self.bubble_visible = false;
-    }
-
-    fn reset_active_cycle(&mut self) {
-        if self.phase == BreakReminderPhase::Counting {
-            self.elapsed_ms = 0;
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BreakReminderSignal {
-    TickMillis(u64),
-    #[allow(dead_code)]
-    TickMinutes(u64),
-    #[allow(dead_code)]
-    Dismiss,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-struct BreakReminderAdvanceResult {
-    should_emit: bool,
-    should_clear: bool,
-    payload: Option<avatar_engine::AvatarBubblePayload>,
-}
-
-fn advance_break_reminder(
-    state: &mut BreakReminderRuntime,
-    enabled: bool,
-    interval_minutes: u64,
-    signal: BreakReminderSignal,
-) -> BreakReminderAdvanceResult {
-    let mut result = BreakReminderAdvanceResult::default();
-
-    if !enabled {
-        if state.bubble_visible {
-            result.should_clear = true;
-            result.payload = Some(avatar_engine::AvatarBubblePayload::clear());
-        }
-        state.reset();
-        return result;
-    }
-
-    match signal {
-        BreakReminderSignal::Dismiss => {
-            if state.bubble_visible {
-                state.bubble_visible = false;
-                result.should_clear = true;
-                result.payload = Some(avatar_engine::AvatarBubblePayload::clear());
-            }
-            return result;
-        }
-        BreakReminderSignal::TickMillis(0) | BreakReminderSignal::TickMinutes(0) => return result,
-        _ => {}
-    }
-
-    let delta_ms = match signal {
-        BreakReminderSignal::TickMillis(value) => value,
-        BreakReminderSignal::TickMinutes(value) => value.saturating_mul(60_000),
-        BreakReminderSignal::Dismiss => 0,
-    };
-
-    match state.phase {
-        BreakReminderPhase::Counting => {
-            state.elapsed_ms = state.elapsed_ms.saturating_add(delta_ms);
-            if state.elapsed_ms >= interval_minutes.saturating_mul(60_000) {
-                state.phase = BreakReminderPhase::Cooldown;
-                state.elapsed_ms = 0;
-                state.bubble_visible = true;
-                result.should_emit = true;
-                result.payload = Some(avatar_engine::AvatarBubblePayload::persistent_info(
-                    BREAK_REMINDER_MESSAGE,
-                ));
-            }
-        }
-        BreakReminderPhase::Cooldown => {
-            state.elapsed_ms = state.elapsed_ms.saturating_add(delta_ms);
-            if state.elapsed_ms >= BREAK_REMINDER_BUFFER_MINUTES.saturating_mul(60_000) {
-                state.phase = BreakReminderPhase::Counting;
-                state.elapsed_ms = 0;
-            }
-        }
-    }
-
-    result
-}
-
-const AVATAR_SWITCH_NUDGE_WINDOW_MS: u64 = 3 * 60 * 1000;
-const AVATAR_SWITCH_NUDGE_THRESHOLD: usize = 4;
-const AVATAR_SWITCH_NUDGE_COOLDOWN_MS: u64 = 20 * 60 * 1000;
-const AVATAR_BACKLOG_NUDGE_COOLDOWN_MS: u64 = 90 * 60 * 1000;
-const AVATAR_BACKLOG_NUDGE_MIN_AGE_SECS: i64 = 30 * 60;
-const AVATAR_NUDGE_SWITCH_COMPANION: &str = "__avatar_nudge_switch_companion__";
-const AVATAR_NUDGE_SWITCH_ASSISTANT: &str = "__avatar_nudge_switch_assistant__";
-const AVATAR_NUDGE_SWITCH_COACH: &str = "__avatar_nudge_switch_coach__";
-
-#[derive(Default)]
-struct AvatarNudgeRuntime {
-    recent_switches_ms: VecDeque<u64>,
-    last_switch_nudge_at_ms: u64,
-    last_backlog_nudge_at_ms: u64,
-}
-
-fn avatar_switch_nudge_message_key(persona: &str) -> &'static str {
-    match persona.trim() {
-        "companion" => AVATAR_NUDGE_SWITCH_COMPANION,
-        "coach" => AVATAR_NUDGE_SWITCH_COACH,
-        _ => AVATAR_NUDGE_SWITCH_ASSISTANT,
-    }
-}
-
-fn avatar_backlog_nudge_message_key(persona: &str, count: usize) -> String {
-    format!("__avatar_backlog_nudge__:{}:{}", persona.trim(), count)
-}
-
-fn record_avatar_window_switch(runtime: &mut AvatarNudgeRuntime, now_ms: u64) -> bool {
-    runtime.recent_switches_ms.push_back(now_ms);
-
-    while runtime
-        .recent_switches_ms
-        .front()
-        .is_some_and(|timestamp| now_ms.saturating_sub(*timestamp) > AVATAR_SWITCH_NUDGE_WINDOW_MS)
-    {
-        runtime.recent_switches_ms.pop_front();
-    }
-
-    if runtime.recent_switches_ms.len() < AVATAR_SWITCH_NUDGE_THRESHOLD {
-        return false;
-    }
-
-    if runtime.last_switch_nudge_at_ms != 0
-        && now_ms.saturating_sub(runtime.last_switch_nudge_at_ms) < AVATAR_SWITCH_NUDGE_COOLDOWN_MS
-    {
-        return false;
-    }
-
-    runtime.last_switch_nudge_at_ms = now_ms;
-    true
-}
-
-fn count_open_avatar_followups_for_nudge(items: &[AvatarFollowupItem], now_ts: i64) -> usize {
-    items
-        .iter()
-        .filter(|item| item.status == "open")
-        .filter(|item| now_ts.saturating_sub(item.created_at) >= AVATAR_BACKLOG_NUDGE_MIN_AGE_SECS)
-        .count()
-}
-
-fn should_emit_avatar_backlog_nudge(
-    runtime: &mut AvatarNudgeRuntime,
-    items: &[AvatarFollowupItem],
-    now_ts: i64,
-    now_ms: u64,
-) -> Option<usize> {
-    let count = count_open_avatar_followups_for_nudge(items, now_ts);
-    if count == 0 {
-        return None;
-    }
-
-    if runtime.last_backlog_nudge_at_ms != 0
-        && now_ms.saturating_sub(runtime.last_backlog_nudge_at_ms)
-            < AVATAR_BACKLOG_NUDGE_COOLDOWN_MS
-    {
-        return None;
-    }
-
-    runtime.last_backlog_nudge_at_ms = now_ms;
-    Some(count)
-}
-
 pub(crate) fn default_data_dir() -> PathBuf {
     dirs::data_dir()
         .map(|d| d.join("work-review"))
@@ -1199,25 +998,6 @@ fn should_refresh_browser_url_before_record(app_name: &str, window_title: &str) 
     monitor::is_browser_app(app_name) && !window_title.is_empty()
 }
 
-fn avatar_monitor_poll_interval_ms_for_platform(is_macos: bool, active: bool) -> u64 {
-    if is_macos {
-        if active {
-            750
-        } else {
-            2000
-        }
-    } else if active {
-        180
-    } else {
-        750
-    }
-}
-
-#[allow(dead_code)]
-fn avatar_monitor_poll_interval_ms() -> u64 {
-    avatar_monitor_poll_interval_ms_for_platform(cfg!(target_os = "macos"), true)
-}
-
 fn screen_lock_check_interval_ms_for_platform(is_macos: bool) -> u64 {
     if is_macos {
         5000
@@ -1228,105 +1008,6 @@ fn screen_lock_check_interval_ms_for_platform(is_macos: bool) -> u64 {
 
 fn screen_lock_check_interval_ms() -> u64 {
     screen_lock_check_interval_ms_for_platform(cfg!(target_os = "macos"))
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct AvatarActivityDecision {
-    should_continue: bool,
-    reset_state: Option<avatar_engine::AvatarStatePayload>,
-}
-
-fn avatar_activity_decision(
-    avatar_enabled: bool,
-    is_recording: bool,
-    is_paused: bool,
-    avatar_opacity: f64,
-    avatar_preset: &str,
-    avatar_persona: &str,
-) -> AvatarActivityDecision {
-    if !avatar_enabled {
-        return AvatarActivityDecision {
-            should_continue: false,
-            reset_state: Some(avatar_engine::apply_avatar_visual_settings(
-                avatar_engine::default_avatar_state(),
-                avatar_opacity,
-                avatar_preset,
-                avatar_persona,
-            )),
-        };
-    }
-
-    if !is_recording || is_paused {
-        return AvatarActivityDecision {
-            should_continue: false,
-            reset_state: Some(avatar_engine::apply_avatar_visual_settings(
-                avatar_engine::default_avatar_state(),
-                avatar_opacity,
-                avatar_preset,
-                avatar_persona,
-            )),
-        };
-    }
-
-    AvatarActivityDecision {
-        should_continue: true,
-        reset_state: None,
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct AvatarTransitionDecision {
-    emit_state: Option<avatar_engine::AvatarStatePayload>,
-    pending_state: Option<avatar_engine::AvatarStatePayload>,
-    pending_hits: u8,
-}
-
-fn avatar_transition_decision(
-    current: Option<&avatar_engine::AvatarStatePayload>,
-    pending: Option<&avatar_engine::AvatarStatePayload>,
-    pending_hits: u8,
-    candidate: &avatar_engine::AvatarStatePayload,
-) -> AvatarTransitionDecision {
-    const AVATAR_MODE_STABILITY_THRESHOLD: u8 = 2;
-
-    match current {
-        None => AvatarTransitionDecision {
-            emit_state: Some(candidate.clone()),
-            pending_state: None,
-            pending_hits: 0,
-        },
-        Some(current_state) if current_state == candidate => AvatarTransitionDecision {
-            emit_state: None,
-            pending_state: None,
-            pending_hits: 0,
-        },
-        Some(current_state) if current_state.mode == candidate.mode => AvatarTransitionDecision {
-            emit_state: Some(candidate.clone()),
-            pending_state: None,
-            pending_hits: 0,
-        },
-        Some(_) => {
-            let next_hits = if pending == Some(candidate) {
-                pending_hits.saturating_add(1)
-            } else {
-                1
-            };
-
-            if next_hits >= AVATAR_MODE_STABILITY_THRESHOLD {
-                AvatarTransitionDecision {
-                    emit_state: Some(candidate.clone()),
-                    pending_state: None,
-                    pending_hits: 0,
-                }
-            } else {
-                AvatarTransitionDecision {
-                    emit_state: None,
-                    pending_state: Some(candidate.clone()),
-                    pending_hits: next_hits,
-                }
-            }
-        }
-    }
 }
 
 fn should_skip_transient_window(active_window: &monitor::ActiveWindow) -> bool {
@@ -1362,302 +1043,6 @@ fn should_skip_system_window(active_window: &monitor::ActiveWindow) -> bool {
     is_sys || is_minimized_window || is_explorer_shell || is_windows_system_dialog
 }
 
-async fn background_avatar_task(state: Arc<Mutex<AppState>>, app: AppHandle) {
-    let mut last_avatar_state: Option<avatar_engine::AvatarStatePayload> = None;
-    let mut pending_avatar_state: Option<avatar_engine::AvatarStatePayload> = None;
-    let mut pending_avatar_hits: u8 = 0;
-    let mut last_window_signature: Option<String> = None;
-    let mut break_reminder_runtime = BreakReminderRuntime::new();
-    let mut avatar_nudge_runtime = AvatarNudgeRuntime::default();
-    let mut cached_rules: Vec<work_review_core::config::AppCategoryRule> = Vec::new();
-    let mut cached_custom_categories: Vec<work_review_core::config::CustomCategory> = Vec::new();
-    let mut cached_rules_signature: u64 = 0;
-    const IDLE_TIMEOUT_MINUTES: u64 = 3;
-    let idle_detector = idle_detector::IdleDetector::new(IDLE_TIMEOUT_MINUTES);
-
-    loop {
-        let (
-            avatar_enabled,
-            avatar_generating_report,
-            avatar_opacity,
-            avatar_preset,
-            avatar_persona,
-            is_recording,
-            is_paused,
-            break_reminder_enabled,
-            break_reminder_interval_minutes,
-        ) = {
-            let state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
-            (
-                state_guard.config.avatar_enabled,
-                state_guard.avatar_generating_report,
-                state_guard.config.avatar_opacity,
-                state_guard.config.avatar_preset.clone(),
-                state_guard.config.avatar_persona.clone(),
-                state_guard.is_recording,
-                state_guard.is_paused,
-                state_guard.config.break_reminder_enabled,
-                state_guard.config.break_reminder_interval_minutes,
-            )
-        };
-
-        let activity_decision = avatar_activity_decision(
-            avatar_enabled,
-            is_recording,
-            is_paused,
-            avatar_opacity,
-            &avatar_preset,
-            &avatar_persona,
-        );
-        let poll_interval_ms = avatar_monitor_poll_interval_ms_for_platform(
-            cfg!(target_os = "macos"),
-            activity_decision.should_continue,
-        );
-        tokio::time::sleep(Duration::from_millis(poll_interval_ms)).await;
-
-        if !activity_decision.should_continue {
-            let reminder_result = advance_break_reminder(
-                &mut break_reminder_runtime,
-                false,
-                break_reminder_interval_minutes,
-                BreakReminderSignal::TickMillis(0),
-            );
-            if let Some(payload) = reminder_result.payload.as_ref() {
-                avatar_engine::emit_avatar_bubble(&app, payload);
-            }
-
-            pending_avatar_state = None;
-            pending_avatar_hits = 0;
-            last_window_signature = None;
-            avatar_nudge_runtime.recent_switches_ms.clear();
-
-            if let Some(reset_state) = activity_decision.reset_state {
-                let should_emit_reset = last_avatar_state.as_ref() != Some(&reset_state);
-                {
-                    let mut state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
-                    state_guard.avatar_state = reset_state.clone();
-                }
-
-                if avatar_enabled && should_emit_reset {
-                    avatar_engine::emit_avatar_state(&app, &reset_state);
-                }
-
-                last_avatar_state = Some(reset_state);
-            } else {
-                last_avatar_state = None;
-            }
-            continue;
-        }
-
-        let sampled_at = std::time::Instant::now();
-        let active_window = match monitor::get_active_window_fast() {
-            Ok(window) => window,
-            Err(_) => continue,
-        };
-
-        {
-            let mut state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
-            state_guard.cached_active_window = Some((sampled_at, active_window.clone()));
-            let rules = &state_guard.config.app_category_rules;
-            let cats = &state_guard.config.custom_categories;
-            let sig = rules.len() as u64
-                | rules.last().map_or(0u64, |r| {
-                    let mut h: u64 = 0;
-                    for b in r.app_name.as_bytes() {
-                        h = h.wrapping_add(*b as u64);
-                    }
-                    for b in r.category.as_bytes() {
-                        h = h.wrapping_mul(31).wrapping_add(*b as u64);
-                    }
-                    h
-                });
-            if sig != cached_rules_signature {
-                cached_rules = rules.clone();
-                cached_custom_categories = cats.clone();
-                cached_rules_signature = sig;
-            }
-        };
-        let app_category_rules = &cached_rules;
-        let app_custom_categories = &cached_custom_categories;
-
-        if should_skip_transient_window(&active_window) || should_skip_system_window(&active_window)
-        {
-            continue;
-        }
-
-        let input_idle = idle_detector.is_input_idle();
-        let reminder_result = if !(avatar_enabled && break_reminder_enabled) {
-            advance_break_reminder(
-                &mut break_reminder_runtime,
-                false,
-                break_reminder_interval_minutes,
-                BreakReminderSignal::TickMillis(0),
-            )
-        } else if break_reminder_runtime.phase == BreakReminderPhase::Cooldown {
-            advance_break_reminder(
-                &mut break_reminder_runtime,
-                true,
-                break_reminder_interval_minutes,
-                BreakReminderSignal::TickMillis(poll_interval_ms),
-            )
-        } else if input_idle {
-            break_reminder_runtime.reset_active_cycle();
-            BreakReminderAdvanceResult::default()
-        } else {
-            advance_break_reminder(
-                &mut break_reminder_runtime,
-                true,
-                break_reminder_interval_minutes,
-                BreakReminderSignal::TickMillis(poll_interval_ms),
-            )
-        };
-        if let Some(payload) = reminder_result.payload.as_ref() {
-            avatar_engine::emit_avatar_bubble(&app, payload);
-        }
-
-        let avatar_state = avatar_engine::apply_avatar_visual_settings(
-            avatar_engine::derive_avatar_state_with_rules(
-                &app_category_rules,
-                &app_custom_categories,
-                &active_window.app_name,
-                &active_window.window_title,
-                active_window.browser_url.as_deref(),
-                input_idle,
-                avatar_generating_report,
-            ),
-            avatar_opacity,
-            &avatar_preset,
-            &avatar_persona,
-        );
-
-        let window_signature = format!(
-            "{}|{}|{}",
-            active_window.app_name,
-            active_window.window_title,
-            active_window.browser_url.as_deref().unwrap_or_default()
-        );
-        let window_changed = last_window_signature.as_deref() != Some(window_signature.as_str());
-        let transition_decision = avatar_transition_decision(
-            last_avatar_state.as_ref(),
-            pending_avatar_state.as_ref(),
-            pending_avatar_hits,
-            &avatar_state,
-        );
-
-        pending_avatar_state = transition_decision.pending_state;
-        pending_avatar_hits = transition_decision.pending_hits;
-
-        if let Some(next_avatar_state) = transition_decision.emit_state {
-            let collect_cost_ms = sampled_at.elapsed().as_millis();
-            let previous_mode = last_avatar_state
-                .as_ref()
-                .map(|state| state.mode.as_str())
-                .unwrap_or("none");
-
-            {
-                let mut state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
-                state_guard.avatar_state = next_avatar_state.clone();
-            }
-
-            avatar_engine::emit_avatar_state(&app, &next_avatar_state);
-
-            let entered_idle = match &last_avatar_state {
-                Some(previous) => !previous.is_idle && next_avatar_state.is_idle,
-                None => next_avatar_state.is_idle,
-            };
-
-            if entered_idle {
-                avatar_engine::emit_avatar_bubble(
-                    &app,
-                    &avatar_engine::AvatarBubblePayload::info("先放松一下，待会再继续推进。"),
-                );
-            }
-
-            log::info!(
-                "🐾 桌宠状态切换: {} -> {} | 窗口={} | 采集耗时={}ms",
-                previous_mode,
-                next_avatar_state.mode,
-                window_signature,
-                collect_cost_ms
-            );
-
-            last_avatar_state = Some(next_avatar_state);
-            last_window_signature = Some(window_signature);
-        } else if window_changed {
-            log::debug!(
-                "🐾 桌宠检测到前台切换，但状态未变: {} | 采集耗时={}ms",
-                window_signature,
-                sampled_at.elapsed().as_millis()
-            );
-            last_window_signature = Some(window_signature);
-        }
-
-        if avatar_enabled && window_changed {
-            let now = chrono::Local::now();
-            let now_ts = now.timestamp();
-            let now_ms = now.timestamp_millis().max(0) as u64;
-            let switch_nudge_ready = record_avatar_window_switch(&mut avatar_nudge_runtime, now_ms);
-            let date_from = (now - chrono::Duration::days(3))
-                .format("%Y-%m-%d")
-                .to_string();
-            let followup_result = {
-                let state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
-                let activities = crate::commands::load_filtered_activities_in_range(
-                    &state_guard,
-                    Some(date_from.as_str()),
-                    None,
-                    480,
-                );
-                (
-                    activities,
-                    state_guard.config.avatar_persona.clone(),
-                    state_guard.config.avatar_followups.clone(),
-                )
-            };
-
-            if let (Ok(activities), persona, manual_followups) = followup_result {
-                let mut emitted_followup = false;
-                if let Some(payload) = crate::avatar_followup::find_followup_suggestion(
-                    &activities,
-                    &active_window,
-                    &persona,
-                    &manual_followups,
-                    now_ts,
-                ) {
-                    if crate::avatar_followup::should_emit_followup(&payload.project_key, now_ms) {
-                        crate::avatar_followup::emit_followup_suggestion(&app, &payload);
-                        crate::avatar_followup::note_followup_emitted(&payload.project_key, now_ms);
-                        emitted_followup = true;
-                    }
-                }
-
-                if !emitted_followup && switch_nudge_ready {
-                    avatar_engine::emit_avatar_bubble(
-                        &app,
-                        &avatar_engine::AvatarBubblePayload::info(avatar_switch_nudge_message_key(
-                            &persona,
-                        )),
-                    );
-                } else if !emitted_followup {
-                    if let Some(count) = should_emit_avatar_backlog_nudge(
-                        &mut avatar_nudge_runtime,
-                        &manual_followups,
-                        now_ts,
-                        now_ms,
-                    ) {
-                        avatar_engine::emit_avatar_bubble(
-                            &app,
-                            &avatar_engine::AvatarBubblePayload::info(
-                                avatar_backlog_nudge_message_key(&persona, count),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-
 // 系统托盘在 setup 钩子中使用 TrayIconBuilder 创建 (Tauri v2)
 
 /// 后台截屏任务
@@ -1681,7 +1066,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
     let mut last_idle_log_time = std::time::Instant::now();
     let mut is_currently_idle = false; // 当前是否处于空闲状态
 
-    let poll_interval_ms = monitoring_poll_interval_ms(); // 桌宠状态和窗口切换检测优先更快反馈
+    let poll_interval_ms = monitoring_poll_interval_ms();
 
     // OCR 并发限制：最多 2 个 OCR 任务同时运行，防止任务堆积消耗内存
     let ocr_semaphore = Arc::new(tokio::sync::Semaphore::new(2));
@@ -1734,7 +1119,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
 
         let screenshot_interval = decision.screenshot_interval;
 
-        // 轮询检测活动窗口（1秒间隔），让桌宠状态切换更及时
+        // 轮询检测活动窗口，维持时间线记录的响应速度。
         tokio::time::sleep(Duration::from_millis(poll_interval_ms)).await;
 
         // 获取当前活动窗口
@@ -1749,7 +1134,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
             )
         };
         let mut active_window = if let Some(window) = cached_active_window {
-            // 头像循环缓存不含浏览器 URL，如果是浏览器窗口则跳过缓存重新获取
+            // 快速缓存不含浏览器 URL，如果是浏览器窗口则跳过缓存重新获取。
             if monitor::is_browser_app(&window.app_name) && window.browser_url.is_none() {
                 match monitor::get_active_window() {
                     Ok(w) => w,
@@ -2976,14 +2361,6 @@ async fn main() {
             log::info!("✅ 辅助功能权限已授权");
         }
 
-        // 3. 输入监控权限（桌宠键鼠联动必需）
-        if config.avatar_enabled && !screenshot::has_input_monitoring_permission() {
-            log::warn!("⚠️  输入监控权限未授权，正在请求...");
-            log::warn!("   请在「系统设置 → 隐私与安全性 → 输入监控」中授权 Work Review");
-            screenshot::request_input_monitoring_permission();
-        } else if config.avatar_enabled {
-            log::info!("✅ 输入监控权限已授权");
-        }
     }
 
     // 初始化存储管理器
@@ -3117,35 +2494,8 @@ async fn main() {
 
             let state_clone = state.inner().clone();
             let state_clone2 = state.inner().clone();
-            let state_clone3 = state.inner().clone();
             let state_for_tray = state.inner().clone();
-            let app_handle = app.handle().clone();
             let screenshot_app_handle = app.handle().clone();
-
-            let (avatar_enabled, avatar_scale, avatar_position, avatar_state) = {
-                let state_guard = state.inner().lock().unwrap_or_else(|e| e.into_inner());
-                (
-                    state_guard.config.avatar_enabled,
-                    state_guard.config.avatar_scale,
-                    state_guard.config.avatar_x.zip(state_guard.config.avatar_y),
-                    state_guard.avatar_state.clone(),
-                )
-            };
-
-            if let Err(e) = avatar_engine::sync_avatar_window(
-                &app.handle(),
-                avatar_enabled,
-                avatar_scale,
-                avatar_position,
-                false,
-            ) {
-                log::warn!("初始化桌宠窗口失败: {e}");
-            } else if avatar_enabled {
-                avatar_engine::emit_avatar_state(&app.handle(), &avatar_state);
-            }
-
-            avatar_input::start_avatar_input_monitor(&app.handle());
-            avatar_input::spawn_avatar_input_bridge(app.handle().clone());
 
             if let Err(e) = localhost_api::sync_localhost_api_runtime(&app.handle(), state.inner())
             {
@@ -3268,10 +2618,6 @@ async fn main() {
                 background_screenshot_task(state_clone, screenshot_app_handle).await;
             });
 
-            tauri::async_runtime::spawn(async move {
-                background_avatar_task(state_clone3, app_handle).await;
-            });
-
             // 启动小时摘要生成任务（每小时检查一次）
             tauri::async_runtime::spawn(async move {
                 hourly_summary_task(state_clone2).await;
@@ -3340,17 +2686,12 @@ async fn main() {
             commands::pause_recording,
             commands::resume_recording,
             commands::get_recording_state,
-            commands::get_avatar_state,
-            commands::save_avatar_position,
-            commands::persist_avatar_position,
-            commands::set_avatar_window_expanded,
             commands::get_data_dir,
             commands::get_database_path,
             commands::get_default_data_dir,
             commands::get_default_database_path,
             commands::get_runtime_platform,
             commands::get_linux_session_support,
-            commands::install_gnome_avatar_extension,
             commands::change_data_dir,
             commands::change_database_path,
             commands::cleanup_old_data_dir,
@@ -3403,7 +2744,6 @@ async fn main() {
             commands::get_background_image,
             commands::clear_background_image,
             commands::show_main_window,
-            commands::handle_avatar_followup_action,
             get_platform,
         ])
         .build(tauri::generate_context!())
