@@ -53,8 +53,10 @@ impl StorageManager {
         let current_size = self.calculate_storage_size()?;
         let total_size_mb = current_size as f64 / 1024.0 / 1024.0;
 
-        // 如果超过限制，继续删除最旧的数据
-        if current_size > (self.config.storage_limit_mb as u64 * 1024 * 1024) {
+        // 0 表示不启用空间上限，不因空间超限删除历史文件。
+        if self.config.storage_limit_mb > 0
+            && current_size > (self.config.storage_limit_mb as u64 * 1024 * 1024)
+        {
             screenshots_deleted += self.cleanup_oldest_until_under_limit()?;
         }
 
@@ -159,6 +161,10 @@ impl StorageManager {
 
     /// 当存储超限时，删除最旧的数据直到低于限制
     fn cleanup_oldest_until_under_limit(&self) -> Result<u32> {
+        if self.config.storage_limit_mb == 0 {
+            return Ok(0);
+        }
+
         let screenshots_dir = self.data_dir.join("screenshots");
         if !screenshots_dir.exists() {
             return Ok(0);

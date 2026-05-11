@@ -54,7 +54,6 @@ const AUTOSTART_LAUNCH_ARG: &str = "--autostart";
 const TRAY_MENU_SHOW_ID: &str = "show";
 const TRAY_MENU_RECORDING_TOGGLE_ID: &str = "recording-toggle";
 const TRAY_MENU_LIGHTWEIGHT_MODE_ID: &str = "lightweight-mode";
-const TRAY_MENU_AVATAR_TOGGLE_ID: &str = "avatar-toggle";
 const TRAY_MENU_QUIT_ID: &str = "quit";
 pub(crate) const RECORDING_STATE_CHANGED_EVENT: &str = "recording-state-changed";
 pub(crate) const CONFIG_CHANGED_EVENT: &str = "config-changed";
@@ -65,7 +64,6 @@ type AppCheckMenuItem = CheckMenuItem<tauri::Wry>;
 pub(crate) struct TrayMenuState {
     recording_toggle: AppMenuItem,
     lightweight_mode: AppCheckMenuItem,
-    avatar_toggle: AppCheckMenuItem,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -271,13 +269,12 @@ pub(crate) fn refresh_tray_menu(app: &AppHandle) {
         return;
     };
 
-    let (is_recording, is_paused, lightweight_mode, avatar_enabled) = {
+    let (is_recording, is_paused, lightweight_mode) = {
         let state = state.lock().unwrap_or_else(|e| e.into_inner());
         (
             state.is_recording,
             state.is_paused,
             state.config.lightweight_mode,
-            state.config.avatar_enabled,
         )
     };
 
@@ -285,7 +282,6 @@ pub(crate) fn refresh_tray_menu(app: &AppHandle) {
         .recording_toggle
         .set_text(tray_recording_toggle_label(is_recording, is_paused));
     let _ = tray_menu.lightweight_mode.set_checked(lightweight_mode);
-    let _ = tray_menu.avatar_toggle.set_checked(avatar_enabled);
 }
 
 pub(crate) fn emit_recording_state_changed(app: &AppHandle) {
@@ -345,6 +341,7 @@ fn build_tray_icon(app: &tauri::App) -> tauri::image::Image<'static> {
 pub struct AppState {
     pub config: AppConfig,
     pub database: Database,
+    pub db_path: PathBuf,
     pub privacy_filter: PrivacyFilter,
     pub screenshot_service: ScreenshotService,
     pub storage_manager: StorageManager,
@@ -370,6 +367,11 @@ pub(crate) struct AppLifecycleState {
 #[derive(Serialize, Deserialize)]
 struct DataDirPreference {
     data_dir: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DatabasePathPreference {
+    db_path: String,
 }
 
 fn should_prevent_exit(suppress_next_exit: bool, explicit_quit_requested: bool) -> bool {
@@ -764,6 +766,72 @@ pub(crate) fn save_data_dir_preference(data_dir: &Path) -> std::io::Result<()> {
 
     std::fs::write(preference_path, content)?;
     Ok(())
+}
+
+fn database_path_preference_path() -> PathBuf {
+    dirs::config_dir()
+        .map(|d| d.join("work-review").join("database-location.json"))
+        .unwrap_or_else(|| PathBuf::from("./work-review-database-location.json"))
+}
+
+fn default_database_path_for_data_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("workreview.db")
+}
+
+fn load_database_path_preference() -> Option<PathBuf> {
+    let path = database_path_preference_path();
+    let content = std::fs::read_to_string(path).ok()?;
+    let preference: DatabasePathPreference = serde_json::from_str(&content).ok()?;
+    let db_path = preference.db_path.trim();
+    if db_path.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(db_path))
+    }
+}
+
+pub(crate) fn save_database_path_preference(
+    db_path: &Path,
+    data_dir: &Path,
+) -> std::io::Result<()> {
+    let default_db_path = default_database_path_for_data_dir(data_dir);
+    let preference_path = database_path_preference_path();
+
+    if db_path == default_db_path {
+        if preference_path.exists() {
+            std::fs::remove_file(preference_path)?;
+        }
+        return Ok(());
+    }
+
+    if let Some(parent) = preference_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let content = serde_json::to_string_pretty(&DatabasePathPreference {
+        db_path: db_path.to_string_lossy().to_string(),
+    })
+    .map_err(std::io::Error::other)?;
+
+    std::fs::write(preference_path, content)?;
+    Ok(())
+}
+
+pub(crate) fn resolve_database_path(data_dir: &Path) -> PathBuf {
+    let default_path = default_database_path_for_data_dir(data_dir);
+    let preferred_path = load_database_path_preference().unwrap_or_else(|| default_path.clone());
+
+    if let Some(parent) = preferred_path.parent() {
+        if let Err(error) = std::fs::create_dir_all(parent) {
+            log::warn!("创建数据库目录失败，回退默认数据库: {error}");
+            let _ = save_database_path_preference(&default_path, data_dir);
+            return default_path;
+        }
+    }
+
+    preferred_path
+        .canonicalize()
+        .unwrap_or_else(|_| preferred_path.clone())
 }
 
 fn ensure_data_dir(path: &Path) -> std::io::Result<PathBuf> {
@@ -2859,7 +2927,7 @@ async fn main() {
     }
 
     // 初始化数据库
-    let db_path = data_dir.join("workreview.db");
+    let db_path = resolve_database_path(&data_dir);
     let database = Database::new(&db_path).expect("初始化数据库失败");
 
     // 首次启动或升级后重建 FTS 索引，确保历史数据可被全文检索
@@ -2933,6 +3001,7 @@ async fn main() {
     let app_state = Arc::new(Mutex::new(AppState {
         config,
         database,
+        db_path,
         privacy_filter,
         screenshot_service,
         storage_manager,
@@ -3097,9 +3166,6 @@ async fn main() {
                 CheckMenuItemBuilder::with_id(TRAY_MENU_LIGHTWEIGHT_MODE_ID, "轻量模式")
                     .checked(false)
                     .build(app)?;
-            let avatar_toggle = CheckMenuItemBuilder::with_id(TRAY_MENU_AVATAR_TOGGLE_ID, "桌宠")
-                .checked(avatar_enabled)
-                .build(app)?;
             let quit = MenuItemBuilder::with_id(TRAY_MENU_QUIT_ID, "退出").build(app)?;
 
             let menu = MenuBuilder::new(app)
@@ -3107,7 +3173,6 @@ async fn main() {
                 .separator()
                 .item(&recording_toggle)
                 .item(&lightweight_mode)
-                .item(&avatar_toggle)
                 .separator()
                 .item(&quit)
                 .build()?;
@@ -3115,7 +3180,6 @@ async fn main() {
             app.manage(TrayMenuState {
                 recording_toggle: recording_toggle.clone(),
                 lightweight_mode: lightweight_mode.clone(),
-                avatar_toggle: avatar_toggle.clone(),
             });
             refresh_tray_menu(&app.handle());
 
@@ -3178,21 +3242,6 @@ async fn main() {
                             commands::persist_app_config(next_config, app.clone(), &state_for_tray)
                         {
                             log::warn!("从托盘切换轻量模式失败: {e}");
-                            refresh_tray_menu(&app);
-                        }
-                    }
-                    TRAY_MENU_AVATAR_TOGGLE_ID => {
-                        let next_config = {
-                            let state = state_for_tray.lock().unwrap_or_else(|e| e.into_inner());
-                            let mut config = state.config.clone();
-                            config.avatar_enabled = !config.avatar_enabled;
-                            config
-                        };
-
-                        if let Err(e) =
-                            commands::persist_app_config(next_config, app.clone(), &state_for_tray)
-                        {
-                            log::warn!("从托盘切换桌宠失败: {e}");
                             refresh_tray_menu(&app);
                         }
                     }
@@ -3296,11 +3345,14 @@ async fn main() {
             commands::persist_avatar_position,
             commands::set_avatar_window_expanded,
             commands::get_data_dir,
+            commands::get_database_path,
             commands::get_default_data_dir,
+            commands::get_default_database_path,
             commands::get_runtime_platform,
             commands::get_linux_session_support,
             commands::install_gnome_avatar_extension,
             commands::change_data_dir,
+            commands::change_database_path,
             commands::cleanup_old_data_dir,
             commands::check_github_update,
             commands::download_and_install_github_update,

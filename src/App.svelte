@@ -1,16 +1,11 @@
 <script>
-  import { onMount, tick } from 'svelte';
-  import Router, { push } from 'svelte-spa-router';
+  import { onMount } from 'svelte';
+  import Router from 'svelte-spa-router';
   import Sidebar from './lib/components/Sidebar.svelte';
   import Toast from './lib/components/Toast.svelte';
   import ConfirmDialog from './lib/components/ConfirmDialog.svelte';
-  import Overview from './routes/Overview.svelte';
   import Timeline from './routes/timeline/Timeline.svelte';
-  import Summary from './routes/timeline/Summary.svelte';
-  import Report from './routes/report/Report.svelte';
-  import Ask from './routes/ask/Ask.svelte';
   import Settings from './routes/settings/Settings.svelte';
-  import About from './routes/about/About.svelte';
   import AvatarWindow from './routes/avatar/AvatarWindow.svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
@@ -18,7 +13,6 @@
   import { cache, getLocalDate } from './lib/stores/cache.js';
   import { applyLocaleToDocument, initializeLocale, locale } from '$lib/i18n/index.js';
   import { preloadAppIcons } from './lib/stores/iconCache.js';
-  import { runUpdateFlow } from './lib/utils/updater.js';
 
   const appWindow = getCurrentWebviewWindow();
   const currentWindowLabel = appWindow.label;
@@ -66,53 +60,30 @@
     console.log('开始预加载数据...');
     const today = getLocalDate();
     
-    // 并行预加载：概览、时间线(今天)、日报(今天)
     Promise.all([
-      // 1. 概览
-      invoke('get_today_stats').then(stats => {
-        cache.setOverview(stats);
+      invoke('get_timeline', { date: today, limit: 20, offset: 0 }),
+      invoke('get_hourly_summaries', { date: today })
+    ]).then(([activities, summaries]) => {
+      cache.setTimeline(today, activities, summaries);
 
-        preloadAppIcons(
-          (stats?.browser_usage || []).map((browser) => ({
-            appName: browser.browser_name,
-            executablePath: browser.executable_path,
-          })),
-          invoke,
-          { priority: true }
-        );
-
-        preloadAppIcons(
-          (stats?.app_usage || []).slice(0, 6).map((app) => ({
-            appName: app.app_name,
-            executablePath: app.executable_path,
-          })),
-          invoke
-        );
-      }),
-      // 2. 时间线 (今天) - 仅预加载前 20 条
-      Promise.all([
-        invoke('get_timeline', { date: today, limit: 20, offset: 0 }),
-        invoke('get_hourly_summaries', { date: today })
-      ]).then(([activities, summaries]) => cache.setTimeline(today, activities, summaries)),
-      // 3. 日报 (今天) - 检查是否已存在
-      invoke('get_saved_report', { date: today }).then(report => {
-        if (report) cache.setReport(`${today}:${$locale}`, report);
-      })
-    ]).then(() => {
+      preloadAppIcons(
+        (activities || []).slice(0, 12).map((activity) => ({
+          appName: activity.app_name,
+          executablePath: activity.executable_path,
+        })),
+        invoke,
+        { priority: true }
+      );
       console.log('预加载完成');
     }).catch(e => {
-      console.warn('预加载部分失败:', e);
+      console.warn('预加载时间线失败:', e);
     });
   }
 
   const routes = {
-    '/': Overview,
+    '/': Timeline,
     '/timeline': Timeline,
-    '/timeline/summary': Summary,
-    '/report': Report,
-    '/ask': Ask,
     '/settings': Settings,
-    '/about': About,
   };
 
   let theme = 'system';
@@ -187,45 +158,6 @@
   // 阻止文件拖拽到窗口时 WebView 导航到文件 URL
   function preventFileDrop(e) {
     e.preventDefault();
-  }
-
-  function normalizeTimePart(value, upperBound) {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed)) return 0;
-    return Math.min(Math.max(parsed, 0), upperBound);
-  }
-
-  function resolveAutoReportWorkEnd(config) {
-    // 优先使用用户自定义的日报生成时间
-    const customTime = config?.daily_report_auto_generate_time;
-    if (customTime && typeof customTime === 'string') {
-      const parts = customTime.split(':').map(Number);
-      if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
-        return { hour: Math.min(Math.max(parts[0], 0), 23), minute: Math.min(Math.max(parts[1], 0), 59) };
-      }
-    }
-
-    const fallbackHour = normalizeTimePart(config?.work_end_hour ?? 18, 23);
-    const fallbackMinute = normalizeTimePart(config?.work_end_minute ?? 0, 59);
-    const segments = Array.isArray(config?.work_time_segments) ? config.work_time_segments : [];
-    if (segments.length === 0) {
-      return { hour: fallbackHour, minute: fallbackMinute };
-    }
-
-    const latest = segments.reduce((best, segment) => {
-      const hour = normalizeTimePart(segment?.end_hour, 23);
-      const minute = normalizeTimePart(segment?.end_minute, 59);
-      const score = hour * 60 + minute;
-      if (!best || score > best.score) {
-        return { score, hour, minute };
-      }
-      return best;
-    }, null);
-
-    if (!latest) {
-      return { hour: fallbackHour, minute: fallbackMinute };
-    }
-    return { hour: latest.hour, minute: latest.minute };
   }
 
   onMount(() => {
@@ -321,28 +253,6 @@
       if (disposed) return;
       pendingCleanup.push(unlistenConfigChanged);
 
-      const unlistenAvatarTimeline = await listen('avatar-open-timeline', async (event) => {
-        const payload = event.payload ?? {};
-        const nextDate = typeof payload.date === 'string' ? payload.date.trim() : '';
-
-        try {
-          await push('/timeline');
-          if (nextDate) {
-            window.history.replaceState(
-              window.history.state,
-              '',
-              `/timeline?date=${encodeURIComponent(nextDate)}`
-            );
-          }
-          await tick();
-          window.dispatchEvent(new CustomEvent('timeline-focus-date', { detail: payload }));
-        } catch (e) {
-          console.error('桌宠跳转时间线失败:', e);
-        }
-      });
-      if (disposed) return;
-      pendingCleanup.push(unlistenAvatarTimeline);
-
       // 监听背景图更新事件（来自设置页，实时预览）
       const handleBgChange = (e) => handleBackgroundChanged(e);
       window.addEventListener('background-changed', handleBgChange);
@@ -351,76 +261,16 @@
       // 启动预加载
       preloadApp();
 
-      // 启动后延迟执行一次自动更新检查，避免阻塞首屏渲染
-      const autoUpdateTimer = setTimeout(async () => {
-        try {
-          const shouldCheck = await invoke('should_check_updates');
-          if (!shouldCheck) return;
-
-          await runUpdateFlow({
-            silentWhenUpToDate: true,
-            confirmBeforeDownload: true,
-            onStatusChange: () => {},
-          });
-        } catch (e) {
-          console.warn('自动检查更新失败:', e);
-        }
-      }, 2000);
-      pendingCleanup.push(() => clearTimeout(autoUpdateTimer));
-
-      // 日报自动生成检测：每分钟检查一次
-      let lastAutoGenDate = null;  // 防止同一天重复触发
-      let autoGenRunning = false;  // 防止并发生成
-      const autoReportTimer = setInterval(async () => {
-        if (autoGenRunning) return;  // 上一轮还没完成，跳过
-        const now = new Date();
-        const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
-        const today = getLocalDate();
-
-        // 检查是否达到或已过工作结束时间
-        const { hour: workEndHour, minute: workEndMinute } =
-          resolveAutoReportWorkEnd(runtimeConfig);
-        const workEndTotalMinutes = workEndHour * 60 + workEndMinute;
-
-        // 条件：当前时间 >= 工作结束时间，且今天未自动生成过
-        if (currentTotalMinutes >= workEndTotalMinutes && lastAutoGenDate !== today) {
-          try {
-            // 检查今日是否已有日报
-            const existingReport = await invoke('get_saved_report', { date: today });
-            if (!existingReport) {
-              console.log('工作结束时间到达，自动生成日报...');
-              autoGenRunning = true;
-              try {
-                await invoke('generate_report', { date: today, force: false, locale: currentLocale });
-                cache.invalidate('report', `${today}:${currentLocale}`);
-                lastAutoGenDate = today;
-                console.log('日报自动生成完成');
-              } finally {
-                autoGenRunning = false;
-              }
-            } else {
-              lastAutoGenDate = today;  // 已有日报，标记今天不再触发
-            }
-          } catch (e) {
-            console.warn('日报自动生成失败:', e);
-          }
-        }
-      }, 60000);  // 每分钟检查一次
-      pendingCleanup.push(() => clearInterval(autoReportTimer));
-
       const unlisten = await listen('screenshot-taken', (event) => {
         console.log('截屏完成:', event.payload);
 
         // 1. 增量更新时间线缓存
         cache.addActivity(event.payload);
 
-        // 2. 使概览缓存过期（下次访问或当前页面监听时刷新）
-        cache.invalidate('overview');
-
-        // 3. 发射自定义事件，通知当前页面实时更新
+        // 2. 发射自定义事件，通知当前页面实时更新
         window.dispatchEvent(new CustomEvent('activity-added', { detail: event.payload }));
 
-        // 4. 抢先预热当前应用图标，浏览器记录优先级更高
+        // 3. 抢先预热当前应用图标，浏览器记录优先级更高
         preloadAppIcons(
           [{
             appName: event.payload?.app_name,

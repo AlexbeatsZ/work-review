@@ -485,11 +485,11 @@ pub enum ScreenshotWidthMode {
 /// 存储配置
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StorageConfig {
-    /// 截图保留天数（超过后删除截图文件）
+    /// 截图和 OCR 日志保留天数（超过后删除文件；0 表示永久保留文件）
     pub screenshot_retention_days: u32,
-    /// 元数据保留天数（超过后删除数据库记录）
+    /// DB 时间线记录保留天数。Lite 模式中 0 表示不自动清理时间线记录。
     pub metadata_retention_days: u32,
-    /// 存储空间上限（MB），超过后自动清理最旧的数据
+    /// 存储空间上限（MB），超过后自动清理最旧的截图/OCR 文件；0 表示不启用空间上限。
     pub storage_limit_mb: u32,
     /// JPEG 质量 (1-100)
     pub jpeg_quality: u8,
@@ -513,9 +513,10 @@ fn default_screenshots_enabled() -> bool {
 impl Default for StorageConfig {
     fn default() -> Self {
         Self {
-            screenshot_retention_days: 7, // 默认保留7天截图
-            metadata_retention_days: 30,  // 默认保留30天元数据
-            storage_limit_mb: 2048,       // 默认2GB上限
+            // Lite 默认永久保留 DB 时间线记录；截图/OCR 文件仍可自动清理。
+            screenshot_retention_days: 30,
+            metadata_retention_days: 0,
+            storage_limit_mb: 2048,
             jpeg_quality: 85,             // 85%质量，更清晰
             max_image_width: 1280,        // 最大宽度1280px
             screenshots_enabled: true,
@@ -841,7 +842,7 @@ impl Default for AppConfig {
             openai_api_key: None,
             openai_model: "gpt-5.4".to_string(),
             hide_dock_icon: false,
-            lightweight_mode: false,
+            lightweight_mode: true,
             break_reminder_enabled: false,
             break_reminder_interval_minutes: default_break_reminder_interval_minutes(),
             avatar_enabled: false,
@@ -1356,10 +1357,10 @@ mod tests {
     }
 
     #[test]
-    fn 轻量模式默认应关闭() {
+    fn 轻量模式默认应开启() {
         let config = AppConfig::default();
 
-        assert!(!config.lightweight_mode);
+        assert!(config.lightweight_mode);
     }
 
     #[test]

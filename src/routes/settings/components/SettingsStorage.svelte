@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import { ask, open as openDialog } from '@tauri-apps/plugin-dialog';
+  import { ask, open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
   import { cache } from '../../../lib/stores/cache.js';
   import { locale, t } from '$lib/i18n/index.js';
   import { showToast } from '$lib/stores/toast.js';
@@ -10,16 +10,18 @@
   export let storageStats = null;
   export let dataDir = '';
   export let defaultDataDir = '';
+  export let databasePath = '';
+  export let defaultDatabasePath = '';
   
   const dispatch = createEventDispatcher();
   $: currentLocale = $locale;
-  let isClearing = false;
   let isMigrating = false;
+  let isMovingDatabase = false;
   let isCleaningPreviousDir = false;
   let cleanupCandidateDir = '';
+  let previousDatabasePath = '';
   let localizedScreenshotModes = [];
   let screenshotIntervalLabel = '';
-  let retentionDaysLabel = '';
   let storageRetentionLabel = '';
   let keepForever = false;
   const screenshotModes = [
@@ -47,29 +49,6 @@
     cache.clear();
     showToast(t('settingsStorage.clearCacheAction'));
     dispatch('clearCache');
-  }
-
-  async function clearOldData() {
-    const confirmed = await ask(t('settingsStorage.clearHistoryConfirmMessage'), {
-      title: t('settingsStorage.clearHistoryConfirmTitle'),
-      kind: 'warning',
-    });
-
-    if (!confirmed) {
-      return;
-    }
-    
-    isClearing = true;
-    try {
-      await invoke('clear_old_activities');
-      showToast(t('settingsStorage.clearDone'), 'success');
-      cache.clear();
-      dispatch('clearCache');
-    } catch (e) {
-      showToast(t('settingsStorage.clearFailed', { error: e }), 'error');
-    } finally {
-      isClearing = false;
-    }
   }
 
   async function migrateToDataDir(targetDir) {
@@ -164,44 +143,89 @@
     }
   }
 
+  async function moveDatabaseToPath(targetPath) {
+    const nextPath = targetPath?.trim();
+    if (!nextPath) {
+      return;
+    }
+
+    if (nextPath === databasePath) {
+      showToast(currentLocale === 'en' ? 'Database file is already using this path.' : '数据库文件已在当前位置。');
+      return;
+    }
+
+    const confirmed = await ask(
+      currentLocale === 'en'
+        ? `Move the current SQLite database to:\n${nextPath}\n\nThe target file must not already exist.`
+        : `将当前 SQLite 数据库移动到：\n${nextPath}\n\n目标文件不能已存在。`,
+      {
+        title: currentLocale === 'en' ? 'Change database file' : '更改数据库文件',
+        kind: 'warning',
+      },
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    isMovingDatabase = true;
+    try {
+      const result = await invoke('change_database_path', { targetPath: nextPath });
+      previousDatabasePath = result?.oldDatabasePath || databasePath;
+      databasePath = result?.databasePath || nextPath;
+      showToast(currentLocale === 'en' ? 'Database file updated.' : '数据库文件位置已更新。', 'success');
+      cache.clear();
+      dispatch('databasePathChanged', result);
+    } catch (e) {
+      showToast(
+        currentLocale === 'en'
+          ? `Failed to change database file: ${e}`
+          : `更改数据库文件失败：${e}`,
+        'error',
+      );
+    } finally {
+      isMovingDatabase = false;
+    }
+  }
+
+  async function pickDatabasePath() {
+    const selected = await saveDialog({
+      defaultPath: databasePath || defaultDatabasePath || undefined,
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }],
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    await moveDatabaseToPath(selected);
+  }
+
+  async function restoreDefaultDatabasePath() {
+    await moveDatabaseToPath(defaultDatabasePath);
+  }
+
   function handleChange() {
     dispatch('change', config);
   }
 
-  async function pickDailyReportExportDir() {
-    const selected = await openDialog({
-      directory: true,
-      multiple: false,
-      defaultPath: config.daily_report_export_dir || dataDir || defaultDataDir || undefined,
-    });
-
-    if (!selected || Array.isArray(selected)) {
-      return;
-    }
-
-    config.daily_report_export_dir = selected;
-    handleChange();
-  }
-
-  function clearDailyReportExportDir() {
-    config.daily_report_export_dir = null;
-    handleChange();
-  }
-
   // 计算存储使用百分比
-  $: usagePercent = storageStats 
-    ? Math.min(Math.round((storageStats.total_size_mb / storageStats.storage_limit_mb) * 100), 100) 
+  $: storageLimitDisabled = !storageStats || storageStats.storage_limit_mb === 0;
+  $: usagePercent = storageStats && storageStats.storage_limit_mb > 0
+    ? Math.min(Math.round((storageStats.total_size_mb / storageStats.storage_limit_mb) * 100), 100)
     : 0;
 
   // 使用量颜色
   $: usageColor = usagePercent > 80 ? 'bg-red-500' : usagePercent > 50 ? 'bg-amber-500' : 'bg-emerald-500';
   $: usingDefaultDataDir = dataDir && defaultDataDir && dataDir === defaultDataDir;
+  $: usingDefaultDatabasePath = databasePath && defaultDatabasePath && databasePath === defaultDatabasePath;
   $: {
     currentLocale;
     screenshotIntervalLabel = t('settingsStorage.secondsValue', { count: config?.screenshot_interval ?? 0 });
-    retentionDaysLabel = t('settingsStorage.daysValue', { count: config?.storage?.screenshot_retention_days ?? 0 });
     keepForever = config?.storage?.screenshot_retention_days === 0;
-    storageRetentionLabel = t('settingsStorage.daysValue', { count: storageStats?.retention_days ?? 0 });
+    storageRetentionLabel = storageStats?.retention_days === 0
+      ? (currentLocale === 'en' ? 'Forever' : '永久')
+      : t('settingsStorage.daysValue', { count: storageStats?.retention_days ?? 0 });
   }
   $: if (cleanupCandidateDir && cleanupCandidateDir === dataDir) {
     cleanupCandidateDir = '';
@@ -270,10 +294,19 @@
       </div>
     </div>
 
-    <!-- 数据保留 -->
+    <!-- 截图/OCR 保留 -->
     <div class="settings-block">
       <div class="flex items-center justify-between">
-        <label for="retention-days" class="settings-text">{t('settingsStorage.retentionDays')}</label>
+        <div>
+          <label for="retention-days" class="settings-text">
+            {currentLocale === 'en' ? 'Screenshot/OCR retention' : '截图/OCR 保留天数'}
+          </label>
+          <p class="settings-muted mt-0.5">
+            {currentLocale === 'en'
+              ? 'Only screenshot files and OCR logs are cleaned here. Timeline records in the SQLite DB are not deleted.'
+              : '这里只清理截图文件和 OCR 日志，不会删除 SQLite DB 内的时间线记录。'}
+          </p>
+        </div>
         <div class="flex items-center gap-2">
           <label class="flex items-center gap-1.5 text-xs settings-subtle cursor-pointer select-none">
             <input
@@ -289,7 +322,7 @@
               }}
               class="rounded border-slate-300 dark:border-slate-600"
             />
-            {t('settingsStorage.keepForever')}
+            {currentLocale === 'en' ? 'Keep files forever' : '永久保留文件'}
           </label>
           {#if !keepForever}
             <input
@@ -328,6 +361,48 @@
           <span>{t('settingsStorage.retentionMax')}</span>
         </div>
       {/if}
+    </div>
+
+    <div class="settings-block">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <span class="settings-text">{currentLocale === 'en' ? 'Storage limit' : '存储空间上限'}</span>
+          <p class="settings-muted mt-0.5">
+            {currentLocale === 'en' ? 'Set to unlimited to keep screenshots and OCR files permanently.' : '设为不限制后，不会因为空间上限清理截图和 OCR 文件。'}
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 text-xs settings-subtle cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={config.storage.storage_limit_mb === 0}
+              on:click={() => {
+                config.storage.storage_limit_mb = config.storage.storage_limit_mb === 0 ? 2048 : 0;
+                handleChange();
+              }}
+              class="rounded border-slate-300 dark:border-slate-600"
+            />
+            {currentLocale === 'en' ? 'Unlimited' : '不限制'}
+          </label>
+          {#if config.storage.storage_limit_mb !== 0}
+            <input
+              type="number"
+              min="128"
+              max="1048576"
+              step="128"
+              bind:value={config.storage.storage_limit_mb}
+              on:change={() => {
+                config.storage.storage_limit_mb = Math.max(128, Number(config.storage.storage_limit_mb) || 2048);
+                handleChange();
+              }}
+              class="w-20 rounded-md border border-slate-200 bg-white px-2 py-1 text-center text-sm dark:border-slate-600 dark:bg-slate-800"
+            />
+            <span class="text-xs settings-subtle">MB</span>
+          {:else}
+            <span class="settings-value">{currentLocale === 'en' ? 'Unlimited' : '不限制'}</span>
+          {/if}
+        </div>
+      </div>
     </div>
 
     <div class="settings-block">
@@ -429,53 +504,6 @@
   </div>
 </div>
 
-<!-- 日报导出 -->
-<div class="settings-card mb-5" data-locale={currentLocale}>
-  <h3 class="settings-card-title">{t('settingsStorage.exportTitle')}</h3>
-
-  <div class="settings-block">
-    <div class="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 dark:border-slate-700/80 dark:bg-slate-800/40">
-      <p class="settings-text">{t('settingsStorage.exportDir')}</p>
-      <p class="settings-muted mt-1 break-all">
-        {config.daily_report_export_dir || t('settingsStorage.notSet')}
-      </p>
-      <div class="mt-4 flex flex-wrap gap-3">
-        <button
-          type="button"
-          on:click={pickDailyReportExportDir}
-          class="settings-action-secondary"
-        >
-          {t('settingsStorage.chooseDir')}
-        </button>
-        {#if config.daily_report_export_dir}
-          <button
-            type="button"
-            on:click={clearDailyReportExportDir}
-            class="settings-action-secondary"
-          >
-            {t('settingsStorage.clearDir')}
-          </button>
-        {/if}
-      </div>
-
-      <div class="mt-4 flex items-center justify-between">
-        <div>
-          <p class="settings-text">{t('settingsStorage.autoExport')}</p>
-          <p class="settings-muted mt-0.5">{t('settingsStorage.autoExportHint')}</p>
-        </div>
-        <button
-          type="button"
-          class="switch-track {config.daily_report_auto_export ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'} {!config.daily_report_export_dir ? 'opacity-60 cursor-not-allowed' : ''}"
-          on:click={() => { if (config.daily_report_export_dir) config.daily_report_auto_export = !config.daily_report_auto_export; }}
-          disabled={!config.daily_report_export_dir}
-        >
-          <span class="switch-thumb {config.daily_report_auto_export ? 'translate-x-5' : 'translate-x-0'}"></span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="settings-card mb-5" data-locale={currentLocale}>
   <h3 class="settings-card-title">{t('settingsStorage.dataDirTitle')}</h3>
 
@@ -554,6 +582,57 @@
       </div>
     </div>
 
+    <div class="settings-block">
+      <div class="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 dark:border-slate-700/80 dark:bg-slate-800/40">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <p class="settings-text">{currentLocale === 'en' ? 'Current database file' : '当前数据库文件'}</p>
+            <p class="settings-muted mt-1 break-all">{databasePath || t('common.loading')}</p>
+          </div>
+          <div>
+            <p class="settings-text">{currentLocale === 'en' ? 'Default database file' : '默认数据库文件'}</p>
+            <p class="settings-muted mt-1 break-all">{defaultDatabasePath || t('common.loading')}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button
+            on:click={pickDatabasePath}
+            disabled={isMovingDatabase}
+            class="settings-action-secondary"
+          >
+            {#if isMovingDatabase}
+              {currentLocale === 'en' ? 'Moving...' : '迁移中...'}
+            {:else}
+              {currentLocale === 'en' ? 'Change DB file' : '更改 DB 文件'}
+            {/if}
+          </button>
+
+          {#if !usingDefaultDatabasePath && defaultDatabasePath}
+            <button
+              on:click={restoreDefaultDatabasePath}
+              disabled={isMovingDatabase}
+              class="settings-action-secondary"
+            >
+              {currentLocale === 'en' ? 'Use default DB' : '恢复默认 DB'}
+            </button>
+          {/if}
+        </div>
+
+        {#if previousDatabasePath}
+          <div class="mt-4 rounded-xl border border-slate-200/80 bg-white/70 p-3 dark:border-slate-700/70 dark:bg-slate-900/20">
+            <p class="settings-text">{currentLocale === 'en' ? 'Previous database file' : '上一个数据库文件'}</p>
+            <p class="settings-muted mt-1 break-all">{previousDatabasePath}</p>
+            <p class="settings-muted mt-1">
+              {currentLocale === 'en'
+                ? 'It was left in place as a backup. Delete it manually after confirming the new DB works.'
+                : '旧文件已保留作为备份。确认新 DB 正常后，可手动删除旧文件。'}
+            </p>
+          </div>
+        {/if}
+      </div>
+    </div>
+
     {#if storageStats}
       <div class="settings-block">
         <div class="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 dark:border-slate-700/80 dark:bg-slate-800/40">
@@ -561,16 +640,28 @@
             <div class="mb-2 flex items-end justify-between">
               <div>
                 <span class="text-2xl font-bold text-slate-800 dark:text-white">{storageStats.total_size_mb}</span>
-                <span class="settings-muted"> / {storageStats.storage_limit_mb} MB</span>
+                {#if storageStats.storage_limit_mb > 0}
+                  <span class="settings-muted"> / {storageStats.storage_limit_mb} MB</span>
+                {:else}
+                  <span class="settings-muted"> MB / {currentLocale === 'en' ? 'Unlimited' : '不限制'}</span>
+                {/if}
               </div>
-              <span class="text-sm font-medium {usagePercent > 80 ? 'settings-text-danger' : 'settings-muted'}">{usagePercent}%</span>
+              <span class="text-sm font-medium {usagePercent > 80 ? 'settings-text-danger' : 'settings-muted'}">
+                {#if storageLimitDisabled}
+                  {currentLocale === 'en' ? 'Unlimited' : '不限制'}
+                {:else}
+                  {usagePercent}%
+                {/if}
+              </span>
             </div>
-            <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-              <div
-                class="h-full rounded-full transition-all duration-500 {usageColor}"
-                style="width: {usagePercent}%"
-              ></div>
-            </div>
+            {#if !storageLimitDisabled}
+              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                <div
+                  class="h-full rounded-full transition-all duration-500 {usageColor}"
+                  style="width: {usagePercent}%"
+                ></div>
+              </div>
+            {/if}
           </div>
 
           <div class="grid grid-cols-3 gap-3">
@@ -599,21 +690,6 @@
           class="settings-action-secondary"
         >
           {t('settingsStorage.clearCacheAction')}
-        </button>
-      </div>
-
-      <div class="settings-panel-danger flex items-center justify-between">
-        <span class="settings-text-danger text-sm font-medium">{t('settingsStorage.clearHistory')}</span>
-        <button
-          on:click={clearOldData}
-          disabled={isClearing}
-          class="settings-action-danger"
-        >
-          {#if isClearing}
-            {t('settingsStorage.cleaning')}
-          {:else}
-            {t('settingsStorage.clearHistoryAction')}
-          {/if}
         </button>
       </div>
     </div>

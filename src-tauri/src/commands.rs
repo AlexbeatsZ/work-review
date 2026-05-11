@@ -5456,10 +5456,26 @@ pub async fn get_data_dir(state: State<'_, Arc<Mutex<AppState>>>) -> Result<Stri
     Ok(path_for_display(&state.data_dir))
 }
 
+/// 获取当前数据库文件路径
+#[tauri::command]
+pub async fn get_database_path(state: State<'_, Arc<Mutex<AppState>>>) -> Result<String, AppError> {
+    let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+    Ok(path_for_display(&state.db_path))
+}
+
 /// 获取默认数据目录
 #[tauri::command]
 pub async fn get_default_data_dir() -> Result<String, AppError> {
     Ok(path_for_display(&crate::default_data_dir()))
+}
+
+/// 获取当前数据目录下的默认数据库文件路径
+#[tauri::command]
+pub async fn get_default_database_path(
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<String, AppError> {
+    let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+    Ok(path_for_display(&state.data_dir.join("workreview.db")))
 }
 
 #[tauri::command]
@@ -5815,26 +5831,37 @@ pub async fn change_data_dir(
     // 复制截图等文件（在锁外执行，不阻塞截图循环）
     let copied_files = copy_managed_data_without_live_db(&current_dir, &target_dir)?;
 
-    // 短暂获取锁，做安全 SQLite 备份，然后立即释放
-    let config = {
+    let new_default_db_path = target_dir.join("workreview.db");
+    let current_default_db_path = current_dir.join("workreview.db");
+
+    // 短暂获取锁，做安全 SQLite 备份，然后立即释放。若 DB 已单独迁出，则保持 DB 位置不变。
+    let (config, next_db_path) = {
         let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
-        // SQLite 备份必须在持锁状态下执行（backup_to 内部做 WAL checkpoint + VACUUM INTO）
-        state
-            .database
-            .backup_to(&target_dir.join("workreview.db"))?;
-        state.config.clone()
+        let db_path = state
+            .db_path
+            .canonicalize()
+            .unwrap_or_else(|_| state.db_path.clone());
+        if db_path == current_default_db_path {
+            // SQLite 备份必须在持锁状态下执行（backup_to 内部做 WAL checkpoint + VACUUM INTO）
+            state.database.backup_to(&new_default_db_path)?;
+            (state.config.clone(), new_default_db_path.clone())
+        } else {
+            (state.config.clone(), db_path)
+        }
     };
 
     let config_path = target_dir.join("config.json");
     config.save(&config_path)?;
     crate::save_data_dir_preference(&target_dir)?;
+    crate::save_database_path_preference(&next_db_path, &target_dir)?;
 
     // 重新获取锁，仅做轻量状态更新
     let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
-    state.database = Database::new(&target_dir.join("workreview.db"))?;
+    state.database = Database::new(&next_db_path)?;
     if let Err(e) = state.database.rebuild_fts_index() {
         log::warn!("迁移后 FTS 索引重建失败: {e}");
     }
+    state.db_path = next_db_path.clone();
     state.privacy_filter = PrivacyFilter::from_config(&config.privacy);
     state.screenshot_service = ScreenshotService::new(&target_dir, &config.storage);
     state.storage_manager = StorageManager::new(&target_dir, config.storage.clone());
@@ -5847,6 +5874,7 @@ pub async fn change_data_dir(
 
     Ok(serde_json::json!({
         "dataDir": target_dir.to_string_lossy().to_string(),
+        "databasePath": next_db_path.to_string_lossy().to_string(),
         "oldDataDir": current_dir.to_string_lossy().to_string(),
         "copiedFiles": copied_files,
         "replacedExistingData": replaced_existing_data,
@@ -5855,6 +5883,83 @@ pub async fn change_data_dir(
             copied_files,
             if replaced_existing_data { "，并覆盖旧目录中的 Work Review 数据" } else { "" }
         ),
+    }))
+}
+
+/// 单独切换数据库文件位置，并迁移当前数据库内容
+#[tauri::command]
+pub async fn change_database_path(
+    target_path: String,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<serde_json::Value, AppError> {
+    let requested_path = target_path.trim();
+    if requested_path.is_empty() {
+        return Err(AppError::Config("目标数据库文件不能为空".to_string()));
+    }
+
+    let requested_path = to_absolute_path(Path::new(requested_path))?;
+    if requested_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map_or(true, |ext| !ext.eq_ignore_ascii_case("db"))
+    {
+        return Err(AppError::Config("数据库文件必须使用 .db 扩展名".to_string()));
+    }
+
+    let target_path = if let Some(parent) = requested_path.parent() {
+        std::fs::create_dir_all(parent)?;
+        parent
+            .canonicalize()
+            .unwrap_or_else(|_| parent.to_path_buf())
+            .join(requested_path.file_name().ok_or_else(|| {
+                AppError::Config("目标数据库文件名无效".to_string())
+            })?)
+    } else {
+        return Err(AppError::Config("目标数据库路径无效".to_string()));
+    };
+
+    let (current_path, data_dir) = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        (
+            state
+                .db_path
+                .canonicalize()
+                .unwrap_or_else(|_| state.db_path.clone()),
+            state.data_dir.clone(),
+        )
+    };
+
+    if target_path == current_path {
+        return Ok(serde_json::json!({
+            "databasePath": current_path.to_string_lossy().to_string(),
+            "message": "数据库文件未变化",
+        }));
+    }
+
+    if target_path.exists() {
+        return Err(AppError::Config(
+            "目标数据库文件已存在。为避免误覆盖，请选择一个新的 .db 文件名".to_string(),
+        ));
+    }
+
+    {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state.database.backup_to(&target_path)?;
+    }
+
+    crate::save_database_path_preference(&target_path, &data_dir)?;
+
+    let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+    state.database = Database::new(&target_path)?;
+    if let Err(e) = state.database.rebuild_fts_index() {
+        log::warn!("切换数据库后 FTS 索引重建失败: {e}");
+    }
+    state.db_path = target_path.clone();
+
+    Ok(serde_json::json!({
+        "databasePath": target_path.to_string_lossy().to_string(),
+        "oldDatabasePath": current_path.to_string_lossy().to_string(),
+        "message": "数据库文件位置已更新",
     }))
 }
 

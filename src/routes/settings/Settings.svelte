@@ -6,9 +6,6 @@
   import { showToast } from '../../lib/stores/toast.js';
 
   import SettingsGeneral from './components/SettingsGeneral.svelte';
-  import SettingsAI from './components/SettingsAI.svelte';
-  import SettingsAvatar from './components/SettingsAvatar.svelte';
-  import SettingsNodeGateway from './components/SettingsNodeGateway.svelte';
   import SettingsSystem from './components/SettingsSystem.svelte';
   import SettingsPrivacy from './components/SettingsPrivacy.svelte';
   import SettingsStorage from './components/SettingsStorage.svelte';
@@ -18,12 +15,13 @@
   let dirty = false;
   let error = null;
   let success = false;
-  let providers = [];
   let runningApps = [];
   let recentApps = [];
   let storageStats = null;
   let dataDir = '';
   let defaultDataDir = '';
+  let databasePath = '';
+  let defaultDatabasePath = '';
   let settingsRuntimePlatform = '';
   let successTimer = null;
   $: currentLocale = $locale;
@@ -33,11 +31,8 @@
 
   const tabs = [
     { id: 'general', labelKey: 'settings.tabs.general', icon: 'general' },
-    { id: 'ai', labelKey: 'settings.tabs.ai', icon: 'ai' },
-    { id: 'avatar', labelKey: 'settings.tabs.avatar', icon: 'avatar', beta: true },
     { id: 'privacy', labelKey: 'settings.tabs.privacy', icon: 'privacy' },
     { id: 'storage', labelKey: 'settings.tabs.storage', icon: 'storage' },
-    { id: 'node', labelKey: 'settings.tabs.node', icon: 'node', beta: true },
   ];
 
   // 加载配置
@@ -45,21 +40,31 @@
     loading = true;
     error = null;
     try {
-      const [loadedConfig, loadedProviders, loadedStorageStats, loadedDataDir, loadedDefaultDataDir, loadedRuntimePlatform] = await Promise.all([
+      const [
+        loadedConfig,
+        loadedStorageStats,
+        loadedDataDir,
+        loadedDefaultDataDir,
+        loadedDatabasePath,
+        loadedDefaultDatabasePath,
+        loadedRuntimePlatform
+      ] = await Promise.all([
         invoke('get_config'),
-        invoke('get_ai_providers'),
         invoke('get_storage_stats'),
         invoke('get_data_dir'),
         invoke('get_default_data_dir'),
+        invoke('get_database_path'),
+        invoke('get_default_database_path'),
         invoke('get_runtime_platform'),
       ]);
 
       config = loadedConfig;
       cache.setConfig(config);
-      providers = loadedProviders;
       storageStats = loadedStorageStats;
       dataDir = loadedDataDir;
       defaultDataDir = loadedDefaultDataDir;
+      databasePath = loadedDatabasePath;
+      defaultDatabasePath = loadedDefaultDatabasePath;
       settingsRuntimePlatform = loadedRuntimePlatform;
 
       // 确保对象存在
@@ -132,7 +137,7 @@
         config.vision_model = { provider: 'ollama', endpoint: 'http://localhost:11434', api_key: null, model: 'llava' };
       }
       if (typeof config.lightweight_mode !== 'boolean') {
-        config.lightweight_mode = false;
+        config.lightweight_mode = true;
       }
       if (typeof config.break_reminder_enabled !== 'boolean') {
         config.break_reminder_enabled = false;
@@ -145,8 +150,8 @@
       }
       if (!config.storage) {
         config.storage = {
-          screenshot_retention_days: 7,
-          metadata_retention_days: 30,
+          screenshot_retention_days: 30,
+          metadata_retention_days: 0,
           storage_limit_mb: 2048,
           jpeg_quality: 85,
           max_image_width: 1280,
@@ -240,15 +245,29 @@
 
   async function handleDataDirChanged() {
     try {
-      const [latestStats, latestDataDir] = await Promise.all([
+      const [latestStats, latestDataDir, latestDatabasePath, latestDefaultDatabasePath] = await Promise.all([
         invoke('get_storage_stats'),
         invoke('get_data_dir'),
+        invoke('get_database_path'),
+        invoke('get_default_database_path'),
       ]);
       storageStats = latestStats;
       dataDir = latestDataDir;
+      databasePath = latestDatabasePath;
+      defaultDatabasePath = latestDefaultDatabasePath;
       cache.clear();
     } catch (e) {
       console.error('切换数据目录后刷新状态失败:', e);
+    }
+  }
+
+  async function handleDatabasePathChanged() {
+    try {
+      const latestDatabasePath = await invoke('get_database_path');
+      databasePath = latestDatabasePath;
+      cache.clear();
+    } catch (e) {
+      console.error('切换数据库后刷新状态失败:', e);
     }
   }
 
@@ -337,12 +356,6 @@
               <span class="settings-tab-rail-icon">
                 {#if tab.icon === 'general'}
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                {:else if tab.icon === 'ai'}
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                {:else if tab.icon === 'node'}
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 7h14M5 12h14M5 17h10" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" /></svg>
-                {:else if tab.icon === 'avatar'}
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 9.5l1.5-3 3 2 3-2 1.5 3M7 14.5c0-2.5 2.239-4.5 5-4.5s5 2 5 4.5S14.761 19 12 19s-5-2-5-4.5z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 14h.01M14 14h.01M10.5 16.5c.6.5 1 .75 1.5.75s.9-.25 1.5-.75" /></svg>
                 {:else if tab.icon === 'privacy'}
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                 {:else if tab.icon === 'storage'}
@@ -364,16 +377,6 @@
         <div class="settings-stage-shell">
         {#if activeTab === 'general'}
           <SettingsGeneral bind:config on:change={() => dirty = true} />
-        {:else if activeTab === 'node'}
-          <SettingsNodeGateway bind:config {dataDir} on:change={() => dirty = true} />
-        {:else if activeTab === 'ai'}
-          <div class="settings-card settings-ai-shell">
-            <h3 class="settings-card-title">{t('settings.aiCardTitle')}</h3>
-            <p class="settings-card-desc">{t('settings.aiCardDescription')}</p>
-            <SettingsAI bind:config {providers} on:change={() => dirty = true} />
-          </div>
-        {:else if activeTab === 'avatar'}
-          <SettingsAvatar bind:config on:change={() => dirty = true} />
         {:else if activeTab === 'privacy'}
           <SettingsPrivacy
             bind:config
@@ -387,9 +390,12 @@
             {storageStats}
             {dataDir}
             {defaultDataDir}
+            {databasePath}
+            {defaultDatabasePath}
             on:change={() => dirty = true}
             on:clearCache={handleClearCache}
             on:dataDirChanged={handleDataDirChanged}
+            on:databasePathChanged={handleDatabasePathChanged}
           />
         {/if}
         </div>
