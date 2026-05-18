@@ -1,4 +1,4 @@
-use crate::config::AvatarFollowupItem;
+use crate::config::ManualFollowupItem;
 use crate::database::Activity;
 use crate::monitor::ActiveWindow;
 use crate::work_intelligence::{build_work_sessions, WorkSession};
@@ -111,7 +111,7 @@ pub fn find_followup_suggestion(
     activities: &[Activity],
     active_window: &ActiveWindow,
     persona: &str,
-    manual_followups: &[AvatarFollowupItem],
+    manual_followups: &[ManualFollowupItem],
     now_ts: i64,
 ) -> Option<AvatarFollowupSuggestionPayload> {
     let current_context = CurrentContext::from_active_window(active_window)?;
@@ -219,7 +219,7 @@ impl CurrentContext {
 
 fn is_resume_worthy_session(
     session: &WorkSession,
-    manual_followups: &[AvatarFollowupItem],
+    manual_followups: &[ManualFollowupItem],
     now_ts: i64,
 ) -> bool {
     if session.duration < MIN_SESSION_DURATION_SECONDS {
@@ -424,7 +424,7 @@ mod tests {
         session_project_key, should_emit_followup, significant_tokens, AvatarFollowupAction,
         AvatarFollowupRuntime, FOLLOWUP_RUNTIME,
     };
-    use crate::config::AvatarFollowupItem;
+    use crate::config::ManualFollowupItem;
     use crate::database::Activity;
     use crate::monitor::ActiveWindow;
     use crate::work_intelligence::build_work_sessions;
@@ -546,7 +546,7 @@ mod tests {
         };
         let sessions = build_work_sessions(&activities);
         let project_key = session_project_key(&sessions[0]);
-        let followups = vec![AvatarFollowupItem {
+        let followups = vec![ManualFollowupItem {
             id: "1".to_string(),
             title: "修复支付回调".to_string(),
             date: "2024-03-09".to_string(),

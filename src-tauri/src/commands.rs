@@ -1,6 +1,6 @@
 use crate::analysis::AppLocale;
 use crate::config::{
-    AiProvider, AiProviderConfig, AppCategoryRule, AppConfig, AvatarFollowupItem,
+    AiProvider, AiProviderConfig, AppCategoryRule, AppConfig, ManualFollowupItem,
     CustomSemanticCategory, ModelConfig, PrivacyConfig, WebsiteSemanticRule,
 };
 use crate::database::Database;
@@ -178,6 +178,16 @@ pub struct AvatarFollowupActionInput {
     pub source_app: String,
     pub source_title: String,
     pub persona: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ManualFollowupInput {
+    pub title: String,
+    pub date: String,
+    pub source_app: Option<String>,
+    pub source_title: Option<String>,
+    pub project_key: Option<String>,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -3412,10 +3422,10 @@ pub(crate) fn load_filtered_activities_in_range(
 }
 
 fn manual_followups_in_range(
-    items: &[AvatarFollowupItem],
+    items: &[ManualFollowupItem],
     date_from: Option<&str>,
     date_to: Option<&str>,
-) -> Vec<AvatarFollowupItem> {
+) -> Vec<ManualFollowupItem> {
     items
         .iter()
         .filter(|item| item.status == "open")
@@ -3431,7 +3441,7 @@ fn manual_followups_in_range(
 
 fn merge_manual_followups_into_todos(
     mut extracted: TodoExtractionResult,
-    manual_items: &[AvatarFollowupItem],
+    manual_items: &[ManualFollowupItem],
     date_from: Option<&str>,
     date_to: Option<&str>,
 ) -> TodoExtractionResult {
@@ -3457,7 +3467,7 @@ fn merge_manual_followups_into_todos(
             source_title: item.source_title.clone(),
             source_app: item.source_app.clone(),
             confidence: 96,
-            reason: "桌宠手动加入待跟进".to_string(),
+            reason: "手动加入待跟进".to_string(),
         });
     }
 
@@ -3469,7 +3479,7 @@ fn merge_manual_followups_into_todos(
     });
     extracted.items.truncate(20);
     extracted.summary = format!(
-        "共整理出 {} 条待跟进项（含桌宠手动加入）。",
+        "共整理出 {} 条待跟进项（含手动加入）。",
         extracted.items.len()
     );
     extracted
@@ -3650,7 +3660,7 @@ pub async fn chat_work_assistant(
                         items: Vec::new(),
                         summary: "当前时间范围内没有提取到明确的待办信号。".to_string(),
                     }),
-                &state.config.avatar_followups,
+                &state.config.manual_followups,
                 date_from.as_deref(),
                 date_to.as_deref(),
             ))
@@ -3818,7 +3828,7 @@ pub async fn extract_todo_items(
 
     Ok(merge_manual_followups_into_todos(
         extract_todos(&activities),
-        &state.config.avatar_followups,
+        &state.config.manual_followups,
         date_from.as_deref(),
         date_to.as_deref(),
     ))
@@ -5388,6 +5398,117 @@ pub async fn show_main_window(
 }
 
 #[tauri::command]
+pub async fn get_manual_followups(
+    date_from: Option<String>,
+    date_to: Option<String>,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<Vec<ManualFollowupItem>, AppError> {
+    let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+    Ok(manual_followups_in_range(
+        &state.config.manual_followups,
+        date_from.as_deref(),
+        date_to.as_deref(),
+    ))
+}
+
+#[tauri::command]
+pub async fn add_manual_followup(
+    input: ManualFollowupInput,
+    app: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<ManualFollowupItem, AppError> {
+    let title = input.title.trim().to_string();
+    if title.is_empty() {
+        return Err(AppError::Config("待跟进内容不能为空".to_string()));
+    }
+
+    let date = input.date.trim().to_string();
+    if date.is_empty() {
+        return Err(AppError::Config("待跟进日期不能为空".to_string()));
+    }
+
+    let source_app = input
+        .source_app
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let source_title = input
+        .source_title
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let project_key = input
+        .project_key
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| {
+            let fallback = if !source_app.is_empty() {
+                source_app.as_str()
+            } else {
+                title.as_str()
+            };
+            fallback
+                .chars()
+                .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '-' || *ch == '_')
+                .collect::<String>()
+        })
+        .trim()
+        .to_string();
+
+    let item = ManualFollowupItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        title,
+        date,
+        source_app,
+        source_title,
+        project_key,
+        created_at: chrono::Local::now().timestamp(),
+        status: "open".to_string(),
+    };
+
+    let mut config = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state.config.clone()
+    };
+    config.manual_followups.push(item.clone());
+    config.normalize();
+    persist_app_config(config, app, state.inner())?;
+
+    Ok(item)
+}
+
+#[tauri::command]
+pub async fn update_manual_followup_status(
+    id: String,
+    status: String,
+    app: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(AppError::Config("待跟进 ID 不能为空".to_string()));
+    }
+    let next_status = match status.trim() {
+        "done" => "done",
+        _ => "open",
+    };
+
+    let mut config = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state.config.clone()
+    };
+
+    if let Some(item) = config.manual_followups.iter_mut().find(|item| item.id == id) {
+        item.status = next_status.to_string();
+    } else {
+        return Err(AppError::Config("待跟进不存在".to_string()));
+    }
+
+    config.normalize();
+    persist_app_config(config, app, state.inner())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn handle_avatar_followup_action(
     input: AvatarFollowupActionInput,
     app: AppHandle,
@@ -5418,14 +5539,14 @@ pub async fn handle_avatar_followup_action(
         };
 
         let normalized_title = input.title.trim().to_string();
-        let exists = config.avatar_followups.iter().any(|item| {
+        let exists = config.manual_followups.iter().any(|item| {
             item.status == "open"
                 && item.project_key == project_key
                 && item.title.trim() == normalized_title
         });
 
         if !exists {
-            config.avatar_followups.push(AvatarFollowupItem {
+            config.manual_followups.push(ManualFollowupItem {
                 id: uuid::Uuid::new_v4().to_string(),
                 title: normalized_title,
                 date: input.date.trim().to_string(),

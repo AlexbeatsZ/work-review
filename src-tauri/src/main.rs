@@ -32,7 +32,7 @@ mod telegram_bot;
 mod work_intelligence;
 
 use chrono;
-use config::{AppConfig, AvatarFollowupItem};
+use config::{AppConfig, ManualFollowupItem};
 use database::Database;
 use once_cell::sync::OnceCell;
 use privacy::PrivacyFilter;
@@ -688,7 +688,7 @@ fn record_avatar_window_switch(runtime: &mut AvatarNudgeRuntime, now_ms: u64) ->
     true
 }
 
-fn count_open_avatar_followups_for_nudge(items: &[AvatarFollowupItem], now_ts: i64) -> usize {
+fn count_open_avatar_followups_for_nudge(items: &[ManualFollowupItem], now_ts: i64) -> usize {
     items
         .iter()
         .filter(|item| item.status == "open")
@@ -698,7 +698,7 @@ fn count_open_avatar_followups_for_nudge(items: &[AvatarFollowupItem], now_ts: i
 
 fn should_emit_avatar_backlog_nudge(
     runtime: &mut AvatarNudgeRuntime,
-    items: &[AvatarFollowupItem],
+    items: &[ManualFollowupItem],
     now_ts: i64,
     now_ms: u64,
 ) -> Option<usize> {
@@ -3351,6 +3351,9 @@ async fn main() {
             commands::get_background_image,
             commands::clear_background_image,
             commands::show_main_window,
+            commands::get_manual_followups,
+            commands::add_manual_followup,
+            commands::update_manual_followup_status,
             commands::handle_avatar_followup_action,
             get_platform,
         ])
@@ -3412,7 +3415,7 @@ mod tests {
     use crate::avatar_engine::{
         apply_avatar_visual_settings, default_avatar_state, derive_avatar_state,
     };
-    use crate::config::{AppConfig, AvatarFollowupItem, WebsiteSemanticRule};
+    use crate::config::{AppConfig, ManualFollowupItem, WebsiteSemanticRule};
     use crate::monitor::ActiveWindow;
     use std::time::{Duration, Instant};
 
@@ -4012,7 +4015,7 @@ mod tests {
     #[test]
     fn 待跟进堆积一段时间后应触发主动提醒() {
         let mut runtime = AvatarNudgeRuntime::default();
-        let followups = vec![AvatarFollowupItem {
+        let followups = vec![ManualFollowupItem {
             id: "1".to_string(),
             title: "支付回调".to_string(),
             date: "2024-03-09".to_string(),

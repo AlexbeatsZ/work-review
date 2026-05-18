@@ -183,7 +183,7 @@ pub struct TextModelProfile {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct AvatarFollowupItem {
+pub struct ManualFollowupItem {
     pub id: String,
     pub title: String,
     pub date: String,
@@ -191,11 +191,11 @@ pub struct AvatarFollowupItem {
     pub source_title: String,
     pub project_key: String,
     pub created_at: i64,
-    #[serde(default = "default_avatar_followup_status")]
+    #[serde(default = "default_manual_followup_status")]
     pub status: String,
 }
 
-fn default_avatar_followup_status() -> String {
+fn default_manual_followup_status() -> String {
     "open".to_string()
 }
 
@@ -726,9 +726,13 @@ pub struct AppConfig {
     /// 桌宠互动风格
     #[serde(default = "default_avatar_persona")]
     pub avatar_persona: String,
-    /// 通过桌宠手动记下的待跟进项
+    /// 手动记下的待跟进项
     #[serde(default)]
-    pub avatar_followups: Vec<AvatarFollowupItem>,
+    pub manual_followups: Vec<ManualFollowupItem>,
+    /// 旧版桌宠待跟进项，仅用于兼容迁移。新代码不再写入该字段。
+    #[serde(default)]
+    #[serde(skip_serializing)]
+    pub avatar_followups: Vec<ManualFollowupItem>,
     /// 桌宠窗口横向位置
     #[serde(default)]
     pub avatar_x: Option<i32>,
@@ -849,6 +853,7 @@ impl Default for AppConfig {
             avatar_opacity: default_avatar_opacity(),
             avatar_preset: default_avatar_preset(),
             avatar_persona: default_avatar_persona(),
+            manual_followups: Vec::new(),
             avatar_followups: Vec::new(),
             avatar_x: None,
             avatar_y: None,
@@ -877,7 +882,10 @@ impl AppConfig {
         self.avatar_opacity = normalize_avatar_opacity(self.avatar_opacity);
         self.avatar_preset = normalize_avatar_preset(&self.avatar_preset);
         self.avatar_persona = normalize_avatar_persona(&self.avatar_persona);
-        normalize_avatar_followups(&mut self.avatar_followups);
+        normalize_manual_followups(&mut self.avatar_followups);
+        normalize_manual_followups(&mut self.manual_followups);
+        migrate_legacy_avatar_followups(&mut self.manual_followups, &self.avatar_followups);
+        normalize_manual_followups(&mut self.manual_followups);
         self.break_reminder_interval_minutes =
             normalize_break_reminder_interval_minutes(self.break_reminder_interval_minutes);
         self.daily_report_custom_prompt = self.daily_report_custom_prompt.trim().to_string();
@@ -1239,7 +1247,7 @@ fn normalize_avatar_persona(value: &str) -> String {
     }
 }
 
-fn normalize_avatar_followups(items: &mut Vec<AvatarFollowupItem>) {
+fn normalize_manual_followups(items: &mut Vec<ManualFollowupItem>) {
     let mut seen = std::collections::HashSet::new();
     items.retain_mut(|item| {
         item.id = item.id.trim().to_string();
@@ -1250,7 +1258,7 @@ fn normalize_avatar_followups(items: &mut Vec<AvatarFollowupItem>) {
         item.project_key = item.project_key.trim().to_string();
         item.status = match item.status.trim() {
             "done" => "done".to_string(),
-            _ => default_avatar_followup_status(),
+            _ => default_manual_followup_status(),
         };
 
         if item.title.is_empty() || item.project_key.is_empty() || item.date.is_empty() {
@@ -1272,6 +1280,39 @@ fn normalize_avatar_followups(items: &mut Vec<AvatarFollowupItem>) {
             .then_with(|| a.title.cmp(&b.title))
     });
     items.truncate(200);
+}
+
+fn migrate_legacy_avatar_followups(
+    manual_items: &mut Vec<ManualFollowupItem>,
+    legacy_items: &[ManualFollowupItem],
+) {
+    if legacy_items.is_empty() {
+        return;
+    }
+
+    let mut seen = manual_items
+        .iter()
+        .map(|item| {
+            format!(
+                "{}::{}::{}",
+                item.project_key.to_lowercase(),
+                item.title.to_lowercase(),
+                item.status
+            )
+        })
+        .collect::<std::collections::HashSet<_>>();
+
+    for item in legacy_items {
+        let key = format!(
+            "{}::{}::{}",
+            item.project_key.to_lowercase(),
+            item.title.to_lowercase(),
+            item.status
+        );
+        if seen.insert(key) {
+            manual_items.push(item.clone());
+        }
+    }
 }
 
 fn normalize_break_reminder_interval_minutes(value: u64) -> u64 {
@@ -1309,9 +1350,9 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
 mod tests {
     use super::{
         default_avatar_opacity, default_avatar_persona, default_avatar_preset,
-        default_avatar_scale, normalize_app_category_rules, normalize_avatar_followups,
+        default_avatar_scale, normalize_app_category_rules, normalize_manual_followups,
         normalize_avatar_opacity, normalize_avatar_persona, normalize_avatar_preset,
-        normalize_avatar_scale, AiProvider, AppCategoryRule, AppConfig, AvatarFollowupItem,
+        normalize_avatar_scale, AiProvider, AppCategoryRule, AppConfig, ManualFollowupItem,
         ScreenshotDisplayMode, WebsiteSemanticRule, DEFAULT_LOCALHOST_API_PORT,
     };
 
@@ -1452,9 +1493,9 @@ mod tests {
     }
 
     #[test]
-    fn 桌宠手动待跟进应去重并清理非法项() {
+    fn 手动待跟进应去重并清理非法项() {
         let mut items = vec![
-            AvatarFollowupItem {
+            ManualFollowupItem {
                 id: " 1 ".to_string(),
                 title: " 修复支付页回调 ".to_string(),
                 date: "2026-04-18".to_string(),
@@ -1464,7 +1505,7 @@ mod tests {
                 created_at: 20,
                 status: "open".to_string(),
             },
-            AvatarFollowupItem {
+            ManualFollowupItem {
                 id: "2".to_string(),
                 title: "修复支付页回调".to_string(),
                 date: "2026-04-18".to_string(),
@@ -1474,7 +1515,7 @@ mod tests {
                 created_at: 10,
                 status: "open".to_string(),
             },
-            AvatarFollowupItem {
+            ManualFollowupItem {
                 id: "3".to_string(),
                 title: "   ".to_string(),
                 date: "2026-04-18".to_string(),
@@ -1486,11 +1527,33 @@ mod tests {
             },
         ];
 
-        normalize_avatar_followups(&mut items);
+        normalize_manual_followups(&mut items);
 
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].id, "1");
         assert_eq!(items[0].title, "修复支付页回调");
+    }
+
+    #[test]
+    fn 旧桌宠待跟进应迁移到手动待跟进() {
+        let raw = r#"{
+            "avatarFollowups": [{
+                "id": "legacy-1",
+                "title": "整理发票",
+                "date": "2026-05-18",
+                "sourceApp": "Chrome",
+                "sourceTitle": "Invoices",
+                "projectKey": "finance",
+                "createdAt": 1770000000,
+                "status": "open"
+            }]
+        }"#;
+
+        let mut config: AppConfig = serde_json::from_str(raw).unwrap();
+        config.normalize();
+
+        assert_eq!(config.manual_followups.len(), 1);
+        assert_eq!(config.manual_followups[0].title, "整理发票");
     }
 
     #[test]
