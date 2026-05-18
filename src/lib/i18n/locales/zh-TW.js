@@ -184,6 +184,18 @@ export default {
       deleteCategoryMessage: '確定刪除分類「{category}」？使用該分類的應用將恢復為「其他」分類。',
       confirmDelete: '確認刪除',
       categoryDeleted: '已刪除分類「{category}」，{count} 條規則已回退到「其他」',
+      manualFollowups: {
+        title: '手動備註 / 待跟進',
+        description: '記錄當天需要回看或繼續處理的事項。',
+        placeholder: '輸入一條備註或待跟進事項',
+        add: '新增',
+        saving: '儲存中...',
+        done: '完成',
+        added: '已新增待跟進事項',
+        completed: '已完成待跟進事項',
+        addFailed: '新增待跟進事項失敗',
+        completeFailed: '更新待跟進事項失敗',
+      },
     },
     timelineSummary: {
       title: '時段摘要',
@@ -198,6 +210,17 @@ export default {
       noData: '暫無資料',
       expandFull: '展開全文',
       collapse: '收起',
+      manualFollowups: {
+        title: '未完成待跟進',
+        description: '當天仍處於 open 狀態的手動備註。',
+        empty: '當天沒有未完成待跟進。',
+      },
+      intentDistribution: {
+        title: '工作意圖分布',
+        description: '基於本地規則從時間線中識別。',
+        sessions: '{count} 個時段',
+        empty: '當天暫無可識別的工作意圖。',
+      },
     },
     about: {
       description: '記錄工作過程、生成時間線和日報，所有核心資料預設僅保存在本機。',

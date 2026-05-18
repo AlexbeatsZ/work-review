@@ -184,6 +184,18 @@ export default {
       deleteCategoryMessage: 'Delete category "{category}"? Apps using it will revert to "Other".',
       confirmDelete: 'Delete',
       categoryDeleted: 'Deleted category "{category}", {count} rules reverted to "Other"',
+      manualFollowups: {
+        title: 'Manual Notes / Follow-ups',
+        description: 'Keep items you need to revisit or continue today.',
+        placeholder: 'Add a note or follow-up item',
+        add: 'Add',
+        saving: 'Saving...',
+        done: 'Done',
+        added: 'Follow-up added',
+        completed: 'Follow-up completed',
+        addFailed: 'Failed to add follow-up',
+        completeFailed: 'Failed to update follow-up',
+      },
     },
     timelineSummary: {
       title: 'Hourly Summary',
@@ -198,6 +210,17 @@ export default {
       noData: 'No data yet',
       expandFull: 'Show full text',
       collapse: 'Collapse',
+      manualFollowups: {
+        title: 'Open Follow-ups',
+        description: 'Manual notes still open for this day.',
+        empty: 'No open follow-ups for this day.',
+      },
+      intentDistribution: {
+        title: 'Work Intent Distribution',
+        description: 'Recognized locally from the timeline rules.',
+        sessions: '{count} sessions',
+        empty: 'No recognizable work intents for this day.',
+      },
     },
     about: {
       description: 'Capture work context, timelines, and daily reports while keeping all core data on your device.',

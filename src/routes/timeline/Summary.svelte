@@ -17,6 +17,8 @@
   }
 
   let summaries = [];
+  let manualFollowups = [];
+  let intentSummary = [];
   let loading = true;
   let error = null;
   let selectedDate = getLocalDateString();
@@ -24,6 +26,8 @@
   let expandedHours = new Set();
   $: currentLocale = $locale;
   $: peakDuration = summaries.reduce((max, summary) => Math.max(max, summary.total_duration || 0), 0);
+  $: openManualFollowups = manualFollowups.filter((item) => item.status !== 'done');
+  $: intentTotalDuration = intentSummary.reduce((total, item) => total + (item.duration || 0), 0);
 
   function toggleExpand(hour) {
     if (expandedHours.has(hour)) {
@@ -54,7 +58,14 @@
     loading = true;
     error = null;
     try {
-      summaries = await invoke('get_hourly_summaries', { date: selectedDate });
+      const [summaryData, followupData, intentData] = await Promise.all([
+        invoke('get_hourly_summaries', { date: selectedDate }),
+        invoke('get_manual_followups', { dateFrom: selectedDate, dateTo: selectedDate }),
+        invoke('recognize_work_intents', { dateFrom: selectedDate, dateTo: selectedDate, limit: 5000 }),
+      ]);
+      summaries = summaryData || [];
+      manualFollowups = followupData || [];
+      intentSummary = intentData?.summary || [];
     } catch (e) {
       error = e.toString();
     } finally {
@@ -109,12 +120,69 @@
     <div class="page-card-soft summary-state-card">
       <p class="summary-state-error">{error}</p>
     </div>
-  {:else if summaries.length === 0}
+  {:else if summaries.length === 0 && openManualFollowups.length === 0 && intentSummary.length === 0}
     <div class="page-card-soft summary-state-card">
       <span class="summary-state-icon">📊</span>
       <p class="summary-state-copy">{t('timelineSummary.noData')}</p>
     </div>
   {:else}
+    <div class="summary-lite-panels">
+      <section class="summary-lite-card">
+        <div class="summary-lite-card-header">
+          <div>
+            <h3>{t('timelineSummary.manualFollowups.title')}</h3>
+            <p>{t('timelineSummary.manualFollowups.description')}</p>
+          </div>
+          <span>{openManualFollowups.length}</span>
+        </div>
+
+        {#if openManualFollowups.length > 0}
+          <div class="summary-followup-list">
+            {#each openManualFollowups as item}
+              <div class="summary-followup-item">
+                <strong>{item.title}</strong>
+                {#if item.sourceApp || item.sourceTitle}
+                  <small>{[item.sourceApp, item.sourceTitle].filter(Boolean).join(' · ')}</small>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="summary-lite-empty">{t('timelineSummary.manualFollowups.empty')}</p>
+        {/if}
+      </section>
+
+      <section class="summary-lite-card">
+        <div class="summary-lite-card-header">
+          <div>
+            <h3>{t('timelineSummary.intentDistribution.title')}</h3>
+            <p>{t('timelineSummary.intentDistribution.description')}</p>
+          </div>
+          <span>{intentSummary.length}</span>
+        </div>
+
+        {#if intentSummary.length > 0}
+          <div class="summary-intent-list">
+            {#each intentSummary as item}
+              {@const width = intentTotalDuration > 0 ? Math.max(8, Math.round(((item.duration || 0) / intentTotalDuration) * 100)) : 0}
+              <div class="summary-intent-item">
+                <div class="summary-intent-meta">
+                  <strong>{item.label}</strong>
+                  <small>{formatDurationLocalized(item.duration || 0)} · {t('timelineSummary.intentDistribution.sessions', { count: item.sessionCount || 0 })}</small>
+                </div>
+                <div class="summary-intent-track">
+                  <span style={`width: ${width}%`}></span>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="summary-lite-empty">{t('timelineSummary.intentDistribution.empty')}</p>
+        {/if}
+      </section>
+    </div>
+
+    {#if summaries.length > 0}
     <div class="summary-editorial-shell">
       {#each summaries as summary}
         {@const apps = getMainApps(summary.main_apps)}
@@ -182,6 +250,7 @@
         </section>
       {/each}
     </div>
+    {/if}
   {/if}
 </div>
 
@@ -250,6 +319,115 @@
     margin: 0;
     color: #dc2626;
     font-size: 0.92rem;
+  }
+
+  .summary-lite-panels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .summary-lite-card {
+    display: grid;
+    align-content: start;
+    gap: 0.8rem;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.78);
+    padding: 1rem;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  }
+
+  .summary-lite-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .summary-lite-card-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 0.96rem;
+    font-weight: 700;
+  }
+
+  .summary-lite-card-header p {
+    margin: 0.2rem 0 0;
+    color: #64748b;
+    font-size: 0.8rem;
+  }
+
+  .summary-lite-card-header span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55rem;
+    height: 1.55rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .summary-followup-list,
+  .summary-intent-list {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .summary-followup-item {
+    display: grid;
+    gap: 0.16rem;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 0.8rem;
+    background: rgba(248, 250, 252, 0.76);
+    padding: 0.58rem 0.65rem;
+  }
+
+  .summary-followup-item strong,
+  .summary-intent-meta strong {
+    color: #1e293b;
+    font-size: 0.88rem;
+    font-weight: 650;
+  }
+
+  .summary-followup-item small,
+  .summary-intent-meta small,
+  .summary-lite-empty {
+    color: #64748b;
+    font-size: 0.76rem;
+  }
+
+  .summary-lite-empty {
+    margin: 0;
+  }
+
+  .summary-intent-item {
+    display: grid;
+    gap: 0.42rem;
+  }
+
+  .summary-intent-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .summary-intent-track {
+    height: 0.42rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(226, 232, 240, 0.9);
+  }
+
+  .summary-intent-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #3b82f6, #22c55e);
   }
 
   .summary-editorial-shell {
@@ -489,6 +667,39 @@
     color: #94a3b8;
   }
 
+  :global(.dark) .summary-lite-card {
+    border-color: rgba(71, 85, 105, 0.58);
+    background: rgba(15, 23, 42, 0.58);
+    box-shadow: 0 16px 36px rgba(2, 6, 23, 0.28);
+  }
+
+  :global(.dark) .summary-lite-card-header h3,
+  :global(.dark) .summary-followup-item strong,
+  :global(.dark) .summary-intent-meta strong {
+    color: #f8fafc;
+  }
+
+  :global(.dark) .summary-lite-card-header p,
+  :global(.dark) .summary-followup-item small,
+  :global(.dark) .summary-intent-meta small,
+  :global(.dark) .summary-lite-empty {
+    color: #94a3b8;
+  }
+
+  :global(.dark) .summary-lite-card-header span {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+  }
+
+  :global(.dark) .summary-followup-item {
+    border-color: rgba(71, 85, 105, 0.78);
+    background: rgba(15, 23, 42, 0.62);
+  }
+
+  :global(.dark) .summary-intent-track {
+    background: rgba(51, 65, 85, 0.92);
+  }
+
   :global(.dark) .summary-editorial-shell::before {
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.84), rgba(148, 163, 184, 0.08));
   }
@@ -567,6 +778,16 @@
   }
 
   @media (max-width: 640px) {
+    .summary-lite-panels {
+      grid-template-columns: 1fr;
+    }
+
+    .summary-intent-meta {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
     .summary-editorial-shell {
       --summary-anchor-width: 5rem;
       padding-top: 0.5rem;

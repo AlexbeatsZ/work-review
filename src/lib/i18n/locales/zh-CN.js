@@ -184,6 +184,18 @@ export default {
       deleteCategoryMessage: '确定删除分类"{category}"？使用该分类的应用将恢复为"其他"分类。',
       confirmDelete: '确认删除',
       categoryDeleted: '已删除分类"{category}"，{count} 条规则已回退到"其他"',
+      manualFollowups: {
+        title: '手动备注 / 待跟进',
+        description: '记录当天需要回看或继续处理的事项。',
+        placeholder: '输入一条备注或待跟进事项',
+        add: '添加',
+        saving: '保存中...',
+        done: '完成',
+        added: '已添加待跟进事项',
+        completed: '已完成待跟进事项',
+        addFailed: '添加待跟进事项失败',
+        completeFailed: '更新待跟进事项失败',
+      },
     },
     timelineSummary: {
       title: '时段摘要',
@@ -198,6 +210,17 @@ export default {
       noData: '暂无数据',
       expandFull: '展开全文',
       collapse: '收起',
+      manualFollowups: {
+        title: '未完成待跟进',
+        description: '当天仍处于 open 状态的手动备注。',
+        empty: '当天没有未完成待跟进。',
+      },
+      intentDistribution: {
+        title: '工作意图分布',
+        description: '基于本地规则从时间线中识别。',
+        sessions: '{count} 个时段',
+        empty: '当天暂无可识别的工作意图。',
+      },
     },
     about: {
       description: '记录工作过程、生成时间线和日报，所有核心数据默认仅保存在本机。',

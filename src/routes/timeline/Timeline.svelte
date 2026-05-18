@@ -34,6 +34,9 @@
 
   let activities = [];
   let hourlySummaries = [];
+  let manualFollowups = [];
+  let newManualFollowupTitle = '';
+  let manualFollowupSaving = false;
   let loading = true;
   let error = null;
   let selectedDate = getLocalDateString();
@@ -77,6 +80,7 @@
   }
 
   const unsubIcons = appIconStore.subscribe(v => appIcons = v);
+  $: openManualFollowups = manualFollowups.filter((item) => item.status !== 'done');
 
   function readRequestedTimelineDate() {
     if (typeof window === 'undefined') {
@@ -463,6 +467,45 @@
 
   let loadTimelineRequestId = 0;
 
+  async function addManualFollowup() {
+    const title = newManualFollowupTitle.trim();
+    if (!title || manualFollowupSaving) return;
+
+    manualFollowupSaving = true;
+    try {
+      const item = await invoke('add_manual_followup', {
+        input: {
+          title,
+          date: selectedDate,
+          sourceApp: selectedActivity?.app_name || '',
+          sourceTitle: selectedActivity?.window_title || '',
+          projectKey: selectedActivity?.app_name || '',
+        },
+      });
+      manualFollowups = [item, ...manualFollowups];
+      newManualFollowupTitle = '';
+      showToast(t('timeline.manualFollowups.added'), 'success');
+    } catch (e) {
+      showToast(e?.toString?.() || t('timeline.manualFollowups.addFailed'), 'error');
+    } finally {
+      manualFollowupSaving = false;
+    }
+  }
+
+  async function completeManualFollowup(item) {
+    if (!item?.id) return;
+
+    try {
+      await invoke('update_manual_followup_status', { id: item.id, status: 'done' });
+      manualFollowups = manualFollowups.map((followup) =>
+        followup.id === item.id ? { ...followup, status: 'done' } : followup
+      );
+      showToast(t('timeline.manualFollowups.completed'), 'success');
+    } catch (e) {
+      showToast(e?.toString?.() || t('timeline.manualFollowups.completeFailed'), 'error');
+    }
+  }
+
   // 加载时间线数据（重置）
   async function loadTimeline() {
     // 禁用缓存：每次都从后端加载最新数据，确保数据一致性
@@ -479,9 +522,10 @@
     clearImageCaches();
 
     try {
-      const [activitiesData, summariesData] = await Promise.all([
+      const [activitiesData, summariesData, followupsData] = await Promise.all([
         invoke('get_timeline', { date: selectedDate, limit: PAGE_SIZE, offset: 0 }),
         invoke('get_hourly_summaries', { date: selectedDate }),
+        invoke('get_manual_followups', { dateFrom: selectedDate, dateTo: selectedDate }),
       ]);
 
       if (requestId !== loadTimelineRequestId) return;
@@ -493,6 +537,7 @@
       activities = preparedActivities;
 
       hourlySummaries = summariesData;
+      manualFollowups = followupsData || [];
       offset = activities.length;
       hasMore = activitiesData.length >= PAGE_SIZE;
       
@@ -763,6 +808,65 @@
       </button>
     </div>
   </div>
+
+  {#if !loading && !error}
+    <section class="manual-followups-panel">
+      <div class="manual-followups-header">
+        <div>
+          <h3>{t('timeline.manualFollowups.title')}</h3>
+          <p>{t('timeline.manualFollowups.description')}</p>
+        </div>
+        {#if openManualFollowups.length > 0}
+          <span class="manual-followups-count">{openManualFollowups.length}</span>
+        {/if}
+      </div>
+
+      <div class="manual-followups-input-row">
+        <input
+          class="manual-followups-input"
+          bind:value={newManualFollowupTitle}
+          placeholder={t('timeline.manualFollowups.placeholder')}
+          on:keydown={(event) => {
+            if (event.key === 'Enter') {
+              addManualFollowup();
+            }
+          }}
+        />
+        <button
+          type="button"
+          class="page-action-brand manual-followups-add"
+          disabled={manualFollowupSaving || !newManualFollowupTitle.trim()}
+          on:click={addManualFollowup}
+        >
+          {manualFollowupSaving ? t('timeline.manualFollowups.saving') : t('timeline.manualFollowups.add')}
+        </button>
+      </div>
+
+      {#if openManualFollowups.length > 0}
+        <div class="manual-followups-list">
+          {#each openManualFollowups as item}
+            <div class="manual-followups-item">
+              <div class="manual-followups-copy">
+                <span class="manual-followups-title">{item.title}</span>
+                {#if item.sourceApp || item.sourceTitle}
+                  <span class="manual-followups-source">
+                    {[item.sourceApp, item.sourceTitle].filter(Boolean).join(' · ')}
+                  </span>
+                {/if}
+              </div>
+              <button
+                type="button"
+                class="manual-followups-done"
+                on:click={() => completeManualFollowup(item)}
+              >
+                {t('timeline.manualFollowups.done')}
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </section>
+  {/if}
 
   {#if loading}
     <div class="flex items-center justify-center h-64">
@@ -1183,6 +1287,126 @@
 {/if}
 
 <style>
+  .manual-followups-panel {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  }
+
+  .manual-followups-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .manual-followups-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 0.96rem;
+    font-weight: 700;
+  }
+
+  .manual-followups-header p {
+    margin: 0.15rem 0 0;
+    color: #64748b;
+    font-size: 0.82rem;
+  }
+
+  .manual-followups-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55rem;
+    height: 1.55rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .manual-followups-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.6rem;
+  }
+
+  .manual-followups-input {
+    min-width: 0;
+    border: 1px solid rgba(203, 213, 225, 0.92);
+    border-radius: 0.75rem;
+    background: rgba(248, 250, 252, 0.82);
+    color: #0f172a;
+    padding: 0.62rem 0.8rem;
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .manual-followups-input:focus {
+    border-color: rgba(59, 130, 246, 0.65);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+  }
+
+  .manual-followups-add:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .manual-followups-list {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .manual-followups-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 0.8rem;
+    padding: 0.55rem 0.65rem;
+    background: rgba(248, 250, 252, 0.76);
+  }
+
+  .manual-followups-copy {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .manual-followups-title {
+    color: #1e293b;
+    font-size: 0.88rem;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .manual-followups-source {
+    color: #64748b;
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .manual-followups-done {
+    flex: 0 0 auto;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 0.65rem;
+    background: rgba(34, 197, 94, 0.09);
+    color: #15803d;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
   .timeline-summary-strip {
     display: flex;
     align-items: center;
@@ -1659,6 +1883,40 @@
     background: var(--editorial-surface-subtle);
   }
 
+  :global(.dark) .manual-followups-panel {
+    border-color: rgba(71, 85, 105, 0.58);
+    background: rgba(15, 23, 42, 0.58);
+    box-shadow: 0 16px 36px rgba(2, 6, 23, 0.28);
+  }
+
+  :global(.dark) .manual-followups-header h3,
+  :global(.dark) .manual-followups-title {
+    color: #f8fafc;
+  }
+
+  :global(.dark) .manual-followups-header p,
+  :global(.dark) .manual-followups-source {
+    color: #94a3b8;
+  }
+
+  :global(.dark) .manual-followups-count {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+  }
+
+  :global(.dark) .manual-followups-input,
+  :global(.dark) .manual-followups-item {
+    border-color: rgba(71, 85, 105, 0.78);
+    background: rgba(15, 23, 42, 0.62);
+    color: #f8fafc;
+  }
+
+  :global(.dark) .manual-followups-done {
+    border-color: rgba(74, 222, 128, 0.18);
+    background: rgba(34, 197, 94, 0.12);
+    color: #86efac;
+  }
+
   :global(.dark) .timeline-summary-copy {
     color: #94a3b8;
   }
@@ -1825,6 +2083,15 @@
   }
 
   @media (max-width: 640px) {
+    .manual-followups-input-row {
+      grid-template-columns: 1fr;
+    }
+
+    .manual-followups-item {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
     .timeline-summary-strip {
       align-items: flex-start;
       flex-direction: column;
