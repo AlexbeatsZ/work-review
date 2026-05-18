@@ -845,7 +845,7 @@ impl Default for AppConfig {
             openai_api_key: None,
             openai_model: "gpt-5.4".to_string(),
             hide_dock_icon: false,
-            lightweight_mode: false,
+            lightweight_mode: true,
             break_reminder_enabled: false,
             break_reminder_interval_minutes: default_break_reminder_interval_minutes(),
             avatar_enabled: false,
@@ -1400,7 +1400,7 @@ mod tests {
     fn 轻量模式默认应关闭() {
         let config = AppConfig::default();
 
-        assert!(!config.lightweight_mode);
+        assert!(config.lightweight_mode);
     }
 
     #[test]

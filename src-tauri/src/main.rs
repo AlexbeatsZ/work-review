@@ -50,7 +50,6 @@ const AUTOSTART_LAUNCH_ARG: &str = "--autostart";
 const TRAY_MENU_SHOW_ID: &str = "show";
 const TRAY_MENU_RECORDING_TOGGLE_ID: &str = "recording-toggle";
 const TRAY_MENU_LIGHTWEIGHT_MODE_ID: &str = "lightweight-mode";
-const TRAY_MENU_AVATAR_TOGGLE_ID: &str = "avatar-toggle";
 const TRAY_MENU_QUIT_ID: &str = "quit";
 pub(crate) const RECORDING_STATE_CHANGED_EVENT: &str = "recording-state-changed";
 pub(crate) const CONFIG_CHANGED_EVENT: &str = "config-changed";
@@ -61,7 +60,6 @@ type AppCheckMenuItem = CheckMenuItem<tauri::Wry>;
 pub(crate) struct TrayMenuState {
     recording_toggle: AppMenuItem,
     lightweight_mode: AppCheckMenuItem,
-    avatar_toggle: AppCheckMenuItem,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -267,13 +265,12 @@ pub(crate) fn refresh_tray_menu(app: &AppHandle) {
         return;
     };
 
-    let (is_recording, is_paused, lightweight_mode, avatar_enabled) = {
+    let (is_recording, is_paused, lightweight_mode) = {
         let state = state.lock().unwrap_or_else(|e| e.into_inner());
         (
             state.is_recording,
             state.is_paused,
             state.config.lightweight_mode,
-            state.config.avatar_enabled,
         )
     };
 
@@ -281,7 +278,6 @@ pub(crate) fn refresh_tray_menu(app: &AppHandle) {
         .recording_toggle
         .set_text(tray_recording_toggle_label(is_recording, is_paused));
     let _ = tray_menu.lightweight_mode.set_checked(lightweight_mode);
-    let _ = tray_menu.avatar_toggle.set_checked(avatar_enabled);
 }
 
 pub(crate) fn emit_recording_state_changed(app: &AppHandle) {
@@ -348,10 +344,10 @@ pub struct AppState {
     pub config_path: PathBuf,
     pub is_recording: bool,
     pub is_paused: bool,
+    pub generating_report: bool,
     pub avatar_state: avatar_engine::AvatarStatePayload,
     pub avatar_generating_report: bool,
-    pub generating_report: bool,
-    /// avatar 循环缓存的活动窗口（时间戳 + 窗口信息），供 screenshot 循环复用
+    /// 活动窗口缓存（时间戳 + 窗口信息），供后台截图循环复用
     pub cached_active_window: Option<(std::time::Instant, monitor::ActiveWindow)>,
 }
 
@@ -2934,6 +2930,7 @@ async fn main() {
         config_path,
         is_recording: true,
         is_paused: false,
+        generating_report: false,
         avatar_state: avatar_engine::apply_avatar_visual_settings(
             avatar_engine::default_avatar_state(),
             initial_avatar_opacity,
@@ -2941,7 +2938,6 @@ async fn main() {
             &initial_avatar_persona,
         ),
         avatar_generating_report: false,
-        generating_report: false,
         cached_active_window: None,
     }));
     let app_lifecycle_state = Arc::new(Mutex::new(AppLifecycleState::default()));
@@ -3039,35 +3035,8 @@ async fn main() {
 
             let state_clone = state.inner().clone();
             let state_clone2 = state.inner().clone();
-            let state_clone3 = state.inner().clone();
             let state_for_tray = state.inner().clone();
-            let app_handle = app.handle().clone();
             let screenshot_app_handle = app.handle().clone();
-
-            let (avatar_enabled, avatar_scale, avatar_position, avatar_state) = {
-                let state_guard = state.inner().lock().unwrap_or_else(|e| e.into_inner());
-                (
-                    state_guard.config.avatar_enabled,
-                    state_guard.config.avatar_scale,
-                    state_guard.config.avatar_x.zip(state_guard.config.avatar_y),
-                    state_guard.avatar_state.clone(),
-                )
-            };
-
-            if let Err(e) = avatar_engine::sync_avatar_window(
-                &app.handle(),
-                avatar_enabled,
-                avatar_scale,
-                avatar_position,
-                false,
-            ) {
-                log::warn!("初始化桌宠窗口失败: {e}");
-            } else if avatar_enabled {
-                avatar_engine::emit_avatar_state(&app.handle(), &avatar_state);
-            }
-
-            avatar_input::start_avatar_input_monitor(&app.handle());
-            avatar_input::spawn_avatar_input_bridge(app.handle().clone());
 
             // 创建 Tauri v2 系统托盘
             let show = MenuItemBuilder::with_id(TRAY_MENU_SHOW_ID, "显示窗口").build(app)?;
@@ -3080,9 +3049,6 @@ async fn main() {
                 CheckMenuItemBuilder::with_id(TRAY_MENU_LIGHTWEIGHT_MODE_ID, "轻量模式")
                     .checked(false)
                     .build(app)?;
-            let avatar_toggle = CheckMenuItemBuilder::with_id(TRAY_MENU_AVATAR_TOGGLE_ID, "桌宠")
-                .checked(avatar_enabled)
-                .build(app)?;
             let quit = MenuItemBuilder::with_id(TRAY_MENU_QUIT_ID, "退出").build(app)?;
 
             let menu = MenuBuilder::new(app)
@@ -3090,7 +3056,6 @@ async fn main() {
                 .separator()
                 .item(&recording_toggle)
                 .item(&lightweight_mode)
-                .item(&avatar_toggle)
                 .separator()
                 .item(&quit)
                 .build()?;
@@ -3098,7 +3063,6 @@ async fn main() {
             app.manage(TrayMenuState {
                 recording_toggle: recording_toggle.clone(),
                 lightweight_mode: lightweight_mode.clone(),
-                avatar_toggle: avatar_toggle.clone(),
             });
             refresh_tray_menu(&app.handle());
 
@@ -3164,21 +3128,6 @@ async fn main() {
                             refresh_tray_menu(&app);
                         }
                     }
-                    TRAY_MENU_AVATAR_TOGGLE_ID => {
-                        let next_config = {
-                            let state = state_for_tray.lock().unwrap_or_else(|e| e.into_inner());
-                            let mut config = state.config.clone();
-                            config.avatar_enabled = !config.avatar_enabled;
-                            config
-                        };
-
-                        if let Err(e) =
-                            commands::persist_app_config(next_config, app.clone(), &state_for_tray)
-                        {
-                            log::warn!("从托盘切换桌宠失败: {e}");
-                            refresh_tray_menu(&app);
-                        }
-                    }
                     _ => {}
                 })
                 .on_tray_icon_event(move |_tray, event| {
@@ -3200,10 +3149,6 @@ async fn main() {
             // 启动后台截屏任务
             tauri::async_runtime::spawn(async move {
                 background_screenshot_task(state_clone, screenshot_app_handle).await;
-            });
-
-            tauri::async_runtime::spawn(async move {
-                background_avatar_task(state_clone3, app_handle).await;
             });
 
             // 启动小时摘要生成任务（每小时检查一次）
@@ -3265,15 +3210,10 @@ async fn main() {
             commands::pause_recording,
             commands::resume_recording,
             commands::get_recording_state,
-            commands::get_avatar_state,
-            commands::save_avatar_position,
-            commands::persist_avatar_position,
-            commands::set_avatar_window_expanded,
             commands::get_data_dir,
             commands::get_default_data_dir,
             commands::get_runtime_platform,
             commands::get_linux_session_support,
-            commands::install_gnome_avatar_extension,
             commands::change_data_dir,
             commands::cleanup_old_data_dir,
             commands::open_data_dir,
@@ -3320,7 +3260,6 @@ async fn main() {
             commands::get_manual_followups,
             commands::add_manual_followup,
             commands::update_manual_followup_status,
-            commands::handle_avatar_followup_action,
             get_platform,
         ])
         .build(tauri::generate_context!())
