@@ -16,19 +16,15 @@ mod commands;
 mod config;
 mod database;
 mod error;
-mod feishu_bot;
 mod idle_detector;
 mod linux_session;
-mod localhost_api;
 mod monitor;
-mod node_gateway;
 mod ocr;
 mod ocr_logger;
 mod privacy;
 mod screen_lock;
 mod screenshot;
 mod storage;
-mod telegram_bot;
 mod work_intelligence;
 
 use chrono;
@@ -355,8 +351,6 @@ pub struct AppState {
     pub avatar_state: avatar_engine::AvatarStatePayload,
     pub avatar_generating_report: bool,
     pub generating_report: bool,
-    pub localhost_api_runtime: localhost_api::LocalhostApiRuntime,
-    pub telegram_bot_runtime: telegram_bot::TelegramBotRuntime,
     /// avatar 循环缓存的活动窗口（时间戳 + 窗口信息），供 screenshot 循环复用
     pub cached_active_window: Option<(std::time::Instant, monitor::ActiveWindow)>,
 }
@@ -2948,15 +2942,12 @@ async fn main() {
         ),
         avatar_generating_report: false,
         generating_report: false,
-        localhost_api_runtime: localhost_api::LocalhostApiRuntime::default(),
-        telegram_bot_runtime: telegram_bot::TelegramBotRuntime::default(),
         cached_active_window: None,
     }));
     let app_lifecycle_state = Arc::new(Mutex::new(AppLifecycleState::default()));
 
     // 构建 Tauri 应用
     let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -3077,14 +3068,6 @@ async fn main() {
 
             avatar_input::start_avatar_input_monitor(&app.handle());
             avatar_input::spawn_avatar_input_bridge(app.handle().clone());
-
-            if let Err(e) = localhost_api::sync_localhost_api_runtime(&app.handle(), state.inner())
-            {
-                log::warn!("初始化本地 API 失败: {e}");
-            }
-            if let Err(e) = telegram_bot::sync_telegram_bot_runtime(state.inner()) {
-                log::warn!("初始化 Telegram Bot 失败: {e}");
-            }
 
             // 创建 Tauri v2 系统托盘
             let show = MenuItemBuilder::with_id(TRAY_MENU_SHOW_ID, "显示窗口").build(app)?;
@@ -3275,17 +3258,8 @@ async fn main() {
             commands::get_saved_report,
             commands::update_report_content,
             commands::export_report_markdown,
-            commands::get_localhost_api_status,
-            commands::get_node_gateway_status,
-            commands::get_telegram_bot_status,
-            commands::reveal_localhost_api_token,
-            commands::rotate_localhost_api_token,
             commands::get_config,
             commands::save_config,
-            commands::get_update_settings,
-            commands::save_update_settings,
-            commands::should_check_updates,
-            commands::update_last_check_time,
             commands::start_recording,
             commands::stop_recording,
             commands::pause_recording,
@@ -3302,16 +3276,10 @@ async fn main() {
             commands::install_gnome_avatar_extension,
             commands::change_data_dir,
             commands::cleanup_old_data_dir,
-            commands::check_github_update,
-            commands::download_and_install_github_update,
-            commands::quit_app_for_update,
             commands::open_data_dir,
             commands::get_screenshot_thumbnail,
             commands::get_screenshot_full,
             commands::take_screenshot,
-            commands::test_ai_model,
-            commands::test_model,
-            commands::get_ai_providers,
             commands::get_ollama_models,
             commands::fetch_models,
             commands::get_running_apps,
@@ -3330,8 +3298,6 @@ async fn main() {
             commands::get_hourly_summaries,
             commands::get_activity,
             commands::search_memory,
-            commands::ask_memory,
-            commands::chat_work_assistant,
             commands::get_work_sessions,
             commands::recognize_work_intents,
             commands::generate_weekly_review,
