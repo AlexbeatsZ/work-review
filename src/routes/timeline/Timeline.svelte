@@ -34,9 +34,6 @@
 
   let activities = [];
   let hourlySummaries = [];
-  let manualFollowups = [];
-  let newManualFollowupTitle = '';
-  let manualFollowupSaving = false;
   let loading = true;
   let error = null;
   let selectedDate = getLocalDateString();
@@ -80,7 +77,6 @@
   }
 
   const unsubIcons = appIconStore.subscribe(v => appIcons = v);
-  $: openManualFollowups = manualFollowups.filter((item) => item.status !== 'done');
 
   function readRequestedTimelineDate() {
     if (typeof window === 'undefined') {
@@ -467,45 +463,6 @@
 
   let loadTimelineRequestId = 0;
 
-  async function addManualFollowup() {
-    const title = newManualFollowupTitle.trim();
-    if (!title || manualFollowupSaving) return;
-
-    manualFollowupSaving = true;
-    try {
-      const item = await invoke('add_manual_followup', {
-        input: {
-          title,
-          date: selectedDate,
-          sourceApp: selectedActivity?.app_name || '',
-          sourceTitle: selectedActivity?.window_title || '',
-          projectKey: selectedActivity?.app_name || '',
-        },
-      });
-      manualFollowups = [item, ...manualFollowups];
-      newManualFollowupTitle = '';
-      showToast(t('timeline.manualFollowups.added'), 'success');
-    } catch (e) {
-      showToast(e?.toString?.() || t('timeline.manualFollowups.addFailed'), 'error');
-    } finally {
-      manualFollowupSaving = false;
-    }
-  }
-
-  async function completeManualFollowup(item) {
-    if (!item?.id) return;
-
-    try {
-      await invoke('update_manual_followup_status', { id: item.id, status: 'done' });
-      manualFollowups = manualFollowups.map((followup) =>
-        followup.id === item.id ? { ...followup, status: 'done' } : followup
-      );
-      showToast(t('timeline.manualFollowups.completed'), 'success');
-    } catch (e) {
-      showToast(e?.toString?.() || t('timeline.manualFollowups.completeFailed'), 'error');
-    }
-  }
-
   // 加载时间线数据（重置）
   async function loadTimeline() {
     // 禁用缓存：每次都从后端加载最新数据，确保数据一致性
@@ -522,10 +479,9 @@
     clearImageCaches();
 
     try {
-      const [activitiesData, summariesData, followupsData] = await Promise.all([
+      const [activitiesData, summariesData] = await Promise.all([
         invoke('get_timeline', { date: selectedDate, limit: PAGE_SIZE, offset: 0 }),
         invoke('get_hourly_summaries', { date: selectedDate }),
-        invoke('get_manual_followups', { dateFrom: selectedDate, dateTo: selectedDate }),
       ]);
 
       if (requestId !== loadTimelineRequestId) return;
@@ -537,7 +493,6 @@
       activities = preparedActivities;
 
       hourlySummaries = summariesData;
-      manualFollowups = followupsData || [];
       offset = activities.length;
       hasMore = activitiesData.length >= PAGE_SIZE;
       
@@ -809,65 +764,6 @@
     </div>
   </div>
 
-  {#if !loading && !error}
-    <section class="manual-followups-panel">
-      <div class="manual-followups-header">
-        <div>
-          <h3>{t('timeline.manualFollowups.title')}</h3>
-          <p>{t('timeline.manualFollowups.description')}</p>
-        </div>
-        {#if openManualFollowups.length > 0}
-          <span class="manual-followups-count">{openManualFollowups.length}</span>
-        {/if}
-      </div>
-
-      <div class="manual-followups-input-row">
-        <input
-          class="manual-followups-input"
-          bind:value={newManualFollowupTitle}
-          placeholder={t('timeline.manualFollowups.placeholder')}
-          on:keydown={(event) => {
-            if (event.key === 'Enter') {
-              addManualFollowup();
-            }
-          }}
-        />
-        <button
-          type="button"
-          class="page-action-brand manual-followups-add"
-          disabled={manualFollowupSaving || !newManualFollowupTitle.trim()}
-          on:click={addManualFollowup}
-        >
-          {manualFollowupSaving ? t('timeline.manualFollowups.saving') : t('timeline.manualFollowups.add')}
-        </button>
-      </div>
-
-      {#if openManualFollowups.length > 0}
-        <div class="manual-followups-list">
-          {#each openManualFollowups as item}
-            <div class="manual-followups-item">
-              <div class="manual-followups-copy">
-                <span class="manual-followups-title">{item.title}</span>
-                {#if item.sourceApp || item.sourceTitle}
-                  <span class="manual-followups-source">
-                    {[item.sourceApp, item.sourceTitle].filter(Boolean).join(' · ')}
-                  </span>
-                {/if}
-              </div>
-              <button
-                type="button"
-                class="manual-followups-done"
-                on:click={() => completeManualFollowup(item)}
-              >
-                {t('timeline.manualFollowups.done')}
-              </button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </section>
-  {/if}
-
   {#if loading}
     <div class="flex items-center justify-center h-64">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
@@ -960,6 +856,9 @@
                       <div class="timeline-entry-heading timeline-entry-heading-featured">
                         <span class="timeline-entry-app-name">{getTimelineAppName(activity)}</span>
                         <span class="timeline-entry-category timeline-entry-category-pill">{info.name}</span>
+                        {#if activity.intent_purpose}
+                          <span class="timeline-intent-badge">有目的</span>
+                        {/if}
                       </div>
                     </div>
                     <div class="timeline-entry-duration-chip">{formatDuration(activity.duration)}</div>
@@ -988,6 +887,9 @@
                   <div class="timeline-entry-heading">
                     <span class="timeline-entry-app-name">{getTimelineAppName(activity)}</span>
                     <span class="timeline-entry-category timeline-entry-category-pill">{info.name}</span>
+                    {#if activity.intent_purpose}
+                      <span class="timeline-intent-badge">有目的</span>
+                    {/if}
                   </div>
                 </div>
                 <p class="timeline-entry-title timeline-entry-title-compact" title={activity.window_title}>
@@ -1218,6 +1120,21 @@
             >
               {formatBrowserUrlForDisplay(selectedActivity.browser_url)}
             </button>
+          </div>
+        {/if}
+        {#if selectedActivity.intent_purpose}
+          <div class="timeline-intent-detail">
+            <span class="text-sm font-medium text-slate-500 dark:text-slate-400">目的备注</span>
+            <p class="text-base text-slate-800 dark:text-white mt-1">{selectedActivity.intent_purpose}</p>
+            {#if selectedActivity.intent_note}
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{selectedActivity.intent_note}</p>
+            {/if}
+            {#if selectedActivity.intent_start_timestamp && selectedActivity.intent_completed_at}
+              <p class="text-xs text-slate-400 mt-2">
+                {formatTime(selectedActivity.intent_start_timestamp)} - {formatTime(selectedActivity.intent_end_timestamp || selectedActivity.timestamp)}
+                · 完成于 {formatTime(selectedActivity.intent_completed_at)}
+              </p>
+            {/if}
           </div>
         {/if}
       </div>
@@ -2074,6 +1991,24 @@
 
   :global(.dark) .timeline-detail-header {
     background: var(--editorial-surface-subtle);
+  }
+
+  .timeline-intent-badge {
+    display: inline-flex;
+    width: fit-content;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.14);
+    color: rgb(5, 150, 105);
+    padding: 0.12rem 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .timeline-intent-detail {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    background: rgba(16, 185, 129, 0.08);
+    padding: 0.9rem;
   }
 
   @media (max-width: 860px) {

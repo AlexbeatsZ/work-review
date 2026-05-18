@@ -55,6 +55,45 @@ pub struct Activity {
     /// 语义分类置信度（0-100）
     #[serde(default)]
     pub semantic_confidence: Option<i32>,
+    /// 用户主动标注的目的
+    #[serde(default)]
+    pub intent_purpose: Option<String>,
+    /// 用户主动标注的备注
+    #[serde(default)]
+    pub intent_note: Option<String>,
+    /// 目的区间开始时间
+    #[serde(default)]
+    pub intent_start_timestamp: Option<i64>,
+    /// 目的区间结束时间
+    #[serde(default)]
+    pub intent_end_timestamp: Option<i64>,
+    /// 用户完成目的标注的时间
+    #[serde(default)]
+    pub intent_completed_at: Option<i64>,
+}
+
+impl Default for Activity {
+    fn default() -> Self {
+        Self {
+            id: None,
+            timestamp: 0,
+            app_name: String::new(),
+            window_title: String::new(),
+            screenshot_path: String::new(),
+            ocr_text: None,
+            category: String::new(),
+            duration: 0,
+            browser_url: None,
+            executable_path: None,
+            semantic_category: None,
+            semantic_confidence: None,
+            intent_purpose: None,
+            intent_note: None,
+            intent_start_timestamp: None,
+            intent_end_timestamp: None,
+            intent_completed_at: None,
+        }
+    }
 }
 
 /// 每日报告
@@ -438,7 +477,12 @@ impl Database {
                 browser_url TEXT,
                 executable_path TEXT,
                 semantic_category TEXT,
-                semantic_confidence INTEGER
+                semantic_confidence INTEGER,
+                intent_purpose TEXT,
+                intent_note TEXT,
+                intent_start_timestamp INTEGER,
+                intent_end_timestamp INTEGER,
+                intent_completed_at INTEGER
             )",
             [],
         )?;
@@ -524,6 +568,20 @@ impl Database {
         // 迁移：添加 semantic_confidence 列（如果不存在）
         let _ = conn.execute(
             "ALTER TABLE activities ADD COLUMN semantic_confidence INTEGER",
+            [],
+        );
+        let _ = conn.execute("ALTER TABLE activities ADD COLUMN intent_purpose TEXT", []);
+        let _ = conn.execute("ALTER TABLE activities ADD COLUMN intent_note TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE activities ADD COLUMN intent_start_timestamp INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE activities ADD COLUMN intent_end_timestamp INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE activities ADD COLUMN intent_completed_at INTEGER",
             [],
         );
 
@@ -641,8 +699,8 @@ impl Database {
             .filter(|url| !url.is_empty());
 
         conn.execute(
-            "INSERT INTO activities (timestamp, app_name, window_title, screenshot_path, ocr_text, category, duration, browser_url, executable_path, semantic_category, semantic_confidence)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO activities (timestamp, app_name, window_title, screenshot_path, ocr_text, category, duration, browser_url, executable_path, semantic_category, semantic_confidence, intent_purpose, intent_note, intent_start_timestamp, intent_end_timestamp, intent_completed_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
             params![
                 activity.timestamp,
                 activity.app_name,
@@ -655,6 +713,11 @@ impl Database {
                 activity.executable_path,
                 activity.semantic_category,
                 activity.semantic_confidence,
+                activity.intent_purpose,
+                activity.intent_note,
+                activity.intent_start_timestamp,
+                activity.intent_end_timestamp,
+                activity.intent_completed_at,
             ],
         )?;
 
@@ -693,6 +756,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
+            ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -735,6 +799,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
+            ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -781,6 +846,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
+            ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -828,6 +894,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
+            ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -860,6 +927,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
+            ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -909,6 +977,143 @@ impl Database {
         )?;
 
         Ok(())
+    }
+
+    pub fn apply_intent_to_interval(
+        &self,
+        purpose_start: i64,
+        purpose_end: i64,
+        purpose: &str,
+        note: Option<&str>,
+        completed_at: i64,
+    ) -> Result<usize> {
+        if purpose.trim().is_empty() || purpose_end <= purpose_start {
+            return Ok(0);
+        }
+
+        let mut conn = self.conn.lock().map_err(|e| {
+            AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string()))
+        })?;
+        let tx = conn.transaction()?;
+
+        let mut stmt = tx.prepare(
+            "SELECT id, timestamp, app_name, window_title, screenshot_path, ocr_text, category, duration, browser_url, executable_path, semantic_category, semantic_confidence, intent_purpose, intent_note, intent_start_timestamp, intent_end_timestamp, intent_completed_at
+             FROM activities
+             WHERE duration > 0
+               AND (timestamp - duration) < ?2
+               AND timestamp > ?1
+             ORDER BY timestamp ASC, id ASC",
+        )?;
+
+        let activities: Vec<Activity> = stmt
+            .query_map(params![purpose_start, purpose_end], |row| {
+                Ok(Activity {
+                    id: Some(row.get(0)?),
+                    timestamp: row.get(1)?,
+                    app_name: row.get(2)?,
+                    window_title: row.get(3)?,
+                    screenshot_path: row.get(4)?,
+                    ocr_text: row.get(5)?,
+                    category: row.get(6)?,
+                    duration: row.get(7)?,
+                    browser_url: row.get(8)?,
+                    executable_path: row.get(9)?,
+                    semantic_category: row.get(10)?,
+                    semantic_confidence: row.get(11)?,
+                    intent_purpose: row.get(12)?,
+                    intent_note: row.get(13)?,
+                    intent_start_timestamp: row.get(14)?,
+                    intent_end_timestamp: row.get(15)?,
+                    intent_completed_at: row.get(16)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+        drop(stmt);
+
+        let mut annotated_segments = 0usize;
+        for activity in activities {
+            let Some(id) = activity.id else {
+                continue;
+            };
+            let activity_start = activity.timestamp.saturating_sub(activity.duration);
+            let activity_end = activity.timestamp;
+            let overlap_start = activity_start.max(purpose_start);
+            let overlap_end = activity_end.min(purpose_end);
+            if overlap_end <= overlap_start {
+                continue;
+            }
+
+            tx.execute("DELETE FROM activities WHERE id = ?1", params![id])?;
+
+            let mut insert_segment = |segment_start: i64,
+                                      segment_end: i64,
+                                      intent_purpose: Option<&str>,
+                                      intent_note: Option<&str>,
+                                      intent_start_timestamp: Option<i64>,
+                                      intent_end_timestamp: Option<i64>,
+                                      intent_completed_at: Option<i64>|
+             -> Result<()> {
+                if segment_end <= segment_start {
+                    return Ok(());
+                }
+                tx.execute(
+                    "INSERT INTO activities (timestamp, app_name, window_title, screenshot_path, ocr_text, category, duration, browser_url, executable_path, semantic_category, semantic_confidence, intent_purpose, intent_note, intent_start_timestamp, intent_end_timestamp, intent_completed_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                    params![
+                        segment_end,
+                        activity.app_name,
+                        activity.window_title,
+                        activity.screenshot_path,
+                        activity.ocr_text,
+                        activity.category,
+                        segment_end - segment_start,
+                        activity.browser_url,
+                        activity.executable_path,
+                        activity.semantic_category,
+                        activity.semantic_confidence,
+                        intent_purpose,
+                        intent_note,
+                        intent_start_timestamp,
+                        intent_end_timestamp,
+                        intent_completed_at,
+                    ],
+                )?;
+                Ok(())
+            };
+
+            insert_segment(
+                activity_start,
+                overlap_start,
+                activity.intent_purpose.as_deref(),
+                activity.intent_note.as_deref(),
+                activity.intent_start_timestamp,
+                activity.intent_end_timestamp,
+                activity.intent_completed_at,
+            )?;
+            insert_segment(
+                overlap_start,
+                overlap_end,
+                Some(purpose.trim()),
+                note.map(str::trim).filter(|value| !value.is_empty()),
+                Some(purpose_start),
+                Some(purpose_end),
+                Some(completed_at),
+            )?;
+            annotated_segments += 1;
+            insert_segment(
+                overlap_end,
+                activity_end,
+                activity.intent_purpose.as_deref(),
+                activity.intent_note.as_deref(),
+                activity.intent_start_timestamp,
+                activity.intent_end_timestamp,
+                activity.intent_completed_at,
+            )?;
+        }
+
+        tx.commit()?;
+        Ok(annotated_segments)
     }
 
     /// 精确增加活动时长（用于事件驱动时长计算）
@@ -1530,6 +1735,11 @@ impl Database {
                     executable_path,
                     semantic_category,
                     semantic_confidence,
+                    intent_purpose,
+                    intent_note,
+                    intent_start_timestamp,
+                    intent_end_timestamp,
+                    intent_completed_at,
                     ROW_NUMBER() OVER (
                         PARTITION BY
                             app_name,
@@ -1562,7 +1772,12 @@ impl Database {
                 browser_url,
                 executable_path,
                 semantic_category,
-                semantic_confidence
+                semantic_confidence,
+                intent_purpose,
+                intent_note,
+                intent_start_timestamp,
+                intent_end_timestamp,
+                intent_completed_at
              FROM ranked
              WHERE rn = 1
              ORDER BY timestamp DESC, id DESC
@@ -1589,6 +1804,11 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
+                    intent_purpose: row.get(12)?,
+                    intent_note: row.get(13)?,
+                    intent_start_timestamp: row.get(14)?,
+                    intent_end_timestamp: row.get(15)?,
+                    intent_completed_at: row.get(16)?,
                 })
             })?
             .filter_map(|r| r.ok())
@@ -1687,6 +1907,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
+                ..Activity::default()
                 })
             })?
             .filter_map(|row| row.ok())
@@ -1857,6 +2078,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
+                ..Activity::default()
                 })
             })?
             .filter_map(|r| r.ok())
@@ -2037,6 +2259,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
+                ..Activity::default()
                 })
             })?
             .filter_map(|row| row.ok())
@@ -2081,6 +2304,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
+                ..Activity::default()
                 })
             })?
             .filter_map(|row| row.ok())
@@ -3655,3 +3879,5 @@ mod tests {
         let _ = std::fs::remove_file(backup_path);
     }
 }
+
+

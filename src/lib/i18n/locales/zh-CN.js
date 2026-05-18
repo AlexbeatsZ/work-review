@@ -31,6 +31,7 @@ export default {
       nav: {
         overview: '概览',
         timeline: '时间线',
+        intentNote: '目的备注',
         report: '日报',
         ask: '助手',
         node: '接入管理',

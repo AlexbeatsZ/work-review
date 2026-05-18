@@ -2020,6 +2020,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
                         executable_path: active_window.executable_path,
                         semantic_category: Some(classification.semantic_category),
                         semantic_confidence: Some(i32::from(classification.confidence)),
+                        ..database::Activity::default()
                     };
 
                     // 短暂获取锁写入数据库
@@ -2314,6 +2315,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
                         executable_path: active_window.executable_path,
                         semantic_category: Some(classification.semantic_category.clone()),
                         semantic_confidence: Some(i32::from(classification.confidence)),
+                        ..database::Activity::default()
                     })
                 } else {
                     // === 新建路径：正常截屏并保存 ===
@@ -2407,6 +2409,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
                                         classification.semantic_category.clone(),
                                     ),
                                     semantic_confidence: Some(i32::from(classification.confidence)),
+                                    ..database::Activity::default()
                                 };
 
                                 let inserted = {
@@ -2534,6 +2537,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
                             executable_path: active_window.executable_path,
                             semantic_category: Some(classification.semantic_category.clone()),
                             semantic_confidence: Some(i32::from(classification.confidence)),
+                            ..database::Activity::default()
                         };
 
                         let inserted = {
@@ -2669,6 +2673,7 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
                     executable_path: ow.executable_path.clone(),
                     semantic_category: Some(classification.semantic_category),
                     semantic_confidence: Some(i32::from(classification.confidence)),
+                    ..database::Activity::default()
                 };
 
                 let state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
@@ -3260,6 +3265,8 @@ async fn main() {
             commands::get_manual_followups,
             commands::add_manual_followup,
             commands::update_manual_followup_status,
+            commands::delete_manual_followup,
+            commands::save_intent_note_interval,
             get_platform,
         ])
         .build(tauri::generate_context!())
@@ -3941,3 +3948,6 @@ mod tests {
         );
     }
 }
+
+
+

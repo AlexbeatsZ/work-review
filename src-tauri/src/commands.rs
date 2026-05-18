@@ -120,6 +120,15 @@ pub struct ManualFollowupInput {
     pub project_key: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct IntentNoteInput {
+    pub purpose: String,
+    pub note: Option<String>,
+    pub start_timestamp: i64,
+    pub end_timestamp: Option<i64>,
+}
+
 fn resolve_saved_report_metadata(
     configured_mode: &crate::config::AiMode,
     configured_model_name: &str,
@@ -4787,6 +4796,135 @@ pub async fn update_manual_followup_status(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn delete_manual_followup(
+    id: String,
+    app: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(AppError::Config("待跟进 ID 不能为空".to_string()));
+    }
+
+    let mut config = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state.config.clone()
+    };
+    let before_len = config.manual_followups.len();
+    config.manual_followups.retain(|item| item.id != id);
+    if config.manual_followups.len() == before_len {
+        return Err(AppError::Config("待跟进不存在".to_string()));
+    }
+
+    config.normalize();
+    persist_app_config(config, app, state.inner())?;
+    Ok(())
+}
+
+fn flush_current_activity_for_intent(state: &Arc<Mutex<AppState>>, now_ts: i64) {
+    let active_window = match crate::monitor::get_active_window() {
+        Ok(window) => window,
+        Err(error) => {
+            log::warn!("目的备注保存前读取当前窗口失败: {error}");
+            return;
+        }
+    };
+
+    let mut state_guard = state.lock().unwrap_or_else(|e| e.into_inner());
+    let classification = crate::resolve_activity_classification(
+        &state_guard.config,
+        &active_window.app_name,
+        &active_window.window_title,
+        active_window.browser_url.as_deref(),
+    );
+    let latest = if let Some(url) = active_window
+        .browser_url
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        state_guard.database.get_latest_activity_by_url(url).ok().flatten()
+    } else {
+        state_guard
+            .database
+            .get_latest_activity_by_app_title(&active_window.app_name, &active_window.window_title)
+            .ok()
+            .flatten()
+    };
+
+    if let Some(activity) = latest {
+        let delta = now_ts.saturating_sub(activity.timestamp);
+        if delta > 0 && delta <= 6 * 60 * 60 {
+            if let Some(id) = activity.id {
+                let _ = state_guard.database.merge_activity(
+                    id,
+                    delta,
+                    None,
+                    &activity.screenshot_path,
+                    now_ts,
+                );
+            }
+            return;
+        }
+    }
+
+    let activity = Activity {
+        id: None,
+        timestamp: now_ts,
+        app_name: active_window.app_name,
+        window_title: active_window.window_title,
+        screenshot_path: String::new(),
+        ocr_text: None,
+        category: classification.base_category,
+        duration: 1,
+        browser_url: active_window.browser_url,
+        executable_path: active_window.executable_path,
+        semantic_category: Some(classification.semantic_category),
+        semantic_confidence: Some(i32::from(classification.confidence)),
+        ..Activity::default()
+    };
+    let _ = state_guard.database.insert_activity(&activity);
+}
+
+#[tauri::command]
+pub async fn save_intent_note_interval(
+    input: IntentNoteInput,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<serde_json::Value, AppError> {
+    let purpose = input.purpose.trim().to_string();
+    if purpose.is_empty() {
+        return Err(AppError::Config("目的不能为空".to_string()));
+    }
+
+    let now_ts = chrono::Local::now().timestamp();
+    let purpose_start = input.start_timestamp;
+    let purpose_end = input.end_timestamp.unwrap_or(now_ts).min(now_ts);
+    if purpose_end <= purpose_start {
+        return Err(AppError::Config("目的时间区间无效".to_string()));
+    }
+
+    flush_current_activity_for_intent(state.inner(), purpose_end);
+
+    let annotated = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state.database.apply_intent_to_interval(
+            purpose_start,
+            purpose_end,
+            &purpose,
+            input.note.as_deref(),
+            now_ts,
+        )?
+    };
+
+    Ok(serde_json::json!({
+        "ok": true,
+        "annotatedSegments": annotated,
+        "startTimestamp": purpose_start,
+        "endTimestamp": purpose_end,
+        "completedAt": now_ts,
+    }))
+}
+
 /// 获取数据目录
 #[tauri::command]
 pub async fn get_data_dir(state: State<'_, Arc<Mutex<AppState>>>) -> Result<String, AppError> {
@@ -5341,6 +5479,7 @@ pub async fn take_screenshot(state: State<'_, Arc<Mutex<AppState>>>) -> Result<A
         executable_path,
         semantic_category: Some(semantic_category),
         semantic_confidence: Some(i32::from(semantic_confidence)),
+        ..Activity::default()
     };
 
     // 保存到数据库
@@ -8260,3 +8399,6 @@ pub async fn clear_background_image(
 
     Ok(())
 }
+
+
+

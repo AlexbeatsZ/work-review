@@ -17,7 +17,6 @@
   }
 
   let summaries = [];
-  let manualFollowups = [];
   let intentSummary = [];
   let loading = true;
   let error = null;
@@ -26,7 +25,6 @@
   let expandedHours = new Set();
   $: currentLocale = $locale;
   $: peakDuration = summaries.reduce((max, summary) => Math.max(max, summary.total_duration || 0), 0);
-  $: openManualFollowups = manualFollowups.filter((item) => item.status !== 'done');
   $: intentTotalDuration = intentSummary.reduce((total, item) => total + (item.duration || 0), 0);
 
   function toggleExpand(hour) {
@@ -58,13 +56,11 @@
     loading = true;
     error = null;
     try {
-      const [summaryData, followupData, intentData] = await Promise.all([
+      const [summaryData, intentData] = await Promise.all([
         invoke('get_hourly_summaries', { date: selectedDate }),
-        invoke('get_manual_followups', { dateFrom: selectedDate, dateTo: selectedDate }),
         invoke('recognize_work_intents', { dateFrom: selectedDate, dateTo: selectedDate, limit: 5000 }),
       ]);
       summaries = summaryData || [];
-      manualFollowups = followupData || [];
       intentSummary = intentData?.summary || [];
     } catch (e) {
       error = e.toString();
@@ -120,38 +116,13 @@
     <div class="page-card-soft summary-state-card">
       <p class="summary-state-error">{error}</p>
     </div>
-  {:else if summaries.length === 0 && openManualFollowups.length === 0 && intentSummary.length === 0}
+  {:else if summaries.length === 0 && intentSummary.length === 0}
     <div class="page-card-soft summary-state-card">
       <span class="summary-state-icon">📊</span>
       <p class="summary-state-copy">{t('timelineSummary.noData')}</p>
     </div>
   {:else}
     <div class="summary-lite-panels">
-      <section class="summary-lite-card">
-        <div class="summary-lite-card-header">
-          <div>
-            <h3>{t('timelineSummary.manualFollowups.title')}</h3>
-            <p>{t('timelineSummary.manualFollowups.description')}</p>
-          </div>
-          <span>{openManualFollowups.length}</span>
-        </div>
-
-        {#if openManualFollowups.length > 0}
-          <div class="summary-followup-list">
-            {#each openManualFollowups as item}
-              <div class="summary-followup-item">
-                <strong>{item.title}</strong>
-                {#if item.sourceApp || item.sourceTitle}
-                  <small>{[item.sourceApp, item.sourceTitle].filter(Boolean).join(' · ')}</small>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="summary-lite-empty">{t('timelineSummary.manualFollowups.empty')}</p>
-        {/if}
-      </section>
-
       <section class="summary-lite-card">
         <div class="summary-lite-card-header">
           <div>

@@ -31,6 +31,7 @@ export default {
       nav: {
         overview: 'Overview',
         timeline: 'Timeline',
+        intentNote: 'Intent Notes',
         report: 'Report',
         ask: 'Ask',
         node: 'Integrations',
