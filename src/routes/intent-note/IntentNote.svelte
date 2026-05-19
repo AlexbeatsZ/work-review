@@ -3,9 +3,9 @@
   import { invoke } from '@tauri-apps/api/core';
   import { push } from 'svelte-spa-router';
   import { showToast } from '$lib/stores/toast.js';
+  import { advanceIntentBoundary, enterIntentSession } from '$lib/stores/intentSession.js';
 
-  const boundaryKey = 'workReviewLite.intentBoundary';
-  let boundary = readBoundary();
+  let boundary = enterIntentSession();
   let saved = [];
   let purposes = [];
   let loading = true;
@@ -15,17 +15,8 @@
     return new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  function readBoundary() {
-    const stored = Number(sessionStorage.getItem(boundaryKey));
-    if (Number.isFinite(stored) && stored > 0) return stored;
-    const now = Math.floor(Date.now() / 1000);
-    sessionStorage.setItem(boundaryKey, String(now));
-    return now;
-  }
-
   function updateBoundary(ts) {
-    boundary = ts;
-    sessionStorage.setItem(boundaryKey, String(ts));
+    boundary = advanceIntentBoundary(ts);
   }
 
   async function loadPurposes() {
@@ -85,7 +76,7 @@
   }
 
   onMount(() => {
-    boundary = readBoundary();
+    boundary = enterIntentSession();
     loadPurposes();
   });
 </script>
@@ -94,7 +85,7 @@
   <section class="intent-header">
     <div>
       <h1>目的备注</h1>
-      <p>第一次进入本页开始计时。点击队列里的打勾后，会把上一段时间的目的回填到真实活动记录上。</p>
+      <p>进入本页开始计时。点击队列里的完成后，会把上一段时间的目的回填到真实活动记录上；离开后未完成的时间边界会丢弃。</p>
     </div>
     <div class="intent-boundary">
       <span>当前边界</span>
@@ -123,7 +114,7 @@
                 {#if item.note}<small>{item.note}</small>{/if}
               </div>
               <button class="intent-done" on:click={() => completePurpose(item)} disabled={completingId === item.id}>
-                {completingId === item.id ? '保存中' : '打勾'}
+                {completingId === item.id ? '保存中' : '完成'}
               </button>
               <button class="intent-delete" on:click={() => deletePurpose(item)}>删除</button>
             </div>

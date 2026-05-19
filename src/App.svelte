@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import Router from 'svelte-spa-router';
+  import Router, { location } from 'svelte-spa-router';
   import Sidebar from './lib/components/Sidebar.svelte';
   import Toast from './lib/components/Toast.svelte';
   import ConfirmDialog from './lib/components/ConfirmDialog.svelte';
@@ -15,6 +15,7 @@
   import { cache, getLocalDate } from './lib/stores/cache.js';
   import { applyLocaleToDocument, initializeLocale, locale } from '$lib/i18n/index.js';
   import { preloadAppIcons } from './lib/stores/iconCache.js';
+  import { resetIntentSession } from './lib/stores/intentSession.js';
 
   const appWindow = getCurrentWebviewWindow();
 
@@ -99,6 +100,9 @@
   let runtimeConfig = null;
   let unsubscribeLocale = () => {};
   $: currentLocale = $locale;
+  $: if (!($location || '/').startsWith('/intent-note')) {
+    resetIntentSession();
+  }
 
   function detectSystemTheme() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;

@@ -41,7 +41,7 @@
     <button class="intent-back" on:click={() => push('/intent-note')}>返回</button>
     <div>
       <h1>添加目的</h1>
-      <p>目的和备注会作为一个整体加入列表。只有在列表中打勾完成时，才会写入活动记录。</p>
+      <p>目的和备注会作为一个整体加入列表。只有在列表中点击完成时，才会写入活动记录。</p>
     </div>
   </section>
 
