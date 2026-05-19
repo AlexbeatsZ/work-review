@@ -186,6 +186,8 @@ pub struct TextModelProfile {
 pub struct ManualFollowupItem {
     pub id: String,
     pub title: String,
+    #[serde(default)]
+    pub note: String,
     pub date: String,
     pub source_app: String,
     pub source_title: String,
@@ -705,27 +707,6 @@ pub struct AppConfig {
     /// 轻量模式：关闭主界面时释放主 Webview，仅保留后台录制与托盘
     #[serde(default)]
     pub lightweight_mode: bool,
-    /// 是否启用休息提醒
-    #[serde(default)]
-    pub break_reminder_enabled: bool,
-    /// 连续活跃多久后提醒（分钟）
-    #[serde(default = "default_break_reminder_interval_minutes")]
-    pub break_reminder_interval_minutes: u64,
-    /// 是否启用桌面化身窗口
-    #[serde(default)]
-    pub avatar_enabled: bool,
-    /// 桌宠缩放比例（0.7 - 1.3）
-    #[serde(default = "default_avatar_scale")]
-    pub avatar_scale: f64,
-    /// 桌宠猫体透明度（0.45 - 1.0）
-    #[serde(default = "default_avatar_opacity")]
-    pub avatar_opacity: f64,
-    /// 桌宠官方预设
-    #[serde(default = "default_avatar_preset")]
-    pub avatar_preset: String,
-    /// 桌宠互动风格
-    #[serde(default = "default_avatar_persona")]
-    pub avatar_persona: String,
     /// 手动记下的待跟进项
     #[serde(default)]
     pub manual_followups: Vec<ManualFollowupItem>,
@@ -733,12 +714,6 @@ pub struct AppConfig {
     #[serde(default)]
     #[serde(skip_serializing)]
     pub avatar_followups: Vec<ManualFollowupItem>,
-    /// 桌宠窗口横向位置
-    #[serde(default)]
-    pub avatar_x: Option<i32>,
-    /// 桌宠窗口纵向位置
-    #[serde(default)]
-    pub avatar_y: Option<i32>,
     /// 隐藏系统标题栏装饰
     #[serde(default)]
     pub hide_decorations: bool,
@@ -764,21 +739,6 @@ fn default_bg_opacity() -> f32 {
 }
 fn default_bg_blur() -> u8 {
     1
-}
-fn default_break_reminder_interval_minutes() -> u64 {
-    50
-}
-fn default_avatar_scale() -> f64 {
-    0.9
-}
-fn default_avatar_opacity() -> f64 {
-    0.82
-}
-fn default_avatar_preset() -> String {
-    "original-standard".to_string()
-}
-fn default_avatar_persona() -> String {
-    "assistant".to_string()
 }
 
 impl Default for AppConfig {
@@ -846,17 +806,8 @@ impl Default for AppConfig {
             openai_model: "gpt-5.4".to_string(),
             hide_dock_icon: false,
             lightweight_mode: true,
-            break_reminder_enabled: false,
-            break_reminder_interval_minutes: default_break_reminder_interval_minutes(),
-            avatar_enabled: false,
-            avatar_scale: default_avatar_scale(),
-            avatar_opacity: default_avatar_opacity(),
-            avatar_preset: default_avatar_preset(),
-            avatar_persona: default_avatar_persona(),
             manual_followups: Vec::new(),
             avatar_followups: Vec::new(),
-            avatar_x: None,
-            avatar_y: None,
             hide_decorations: false,
             background_image: None,
             background_opacity: 0.25,
@@ -878,16 +829,10 @@ impl AppConfig {
         normalize_custom_semantic_categories(&mut self.custom_semantic_categories);
         self.screenshot_interval = normalize_screenshot_interval(self.screenshot_interval);
         self.idle_threshold_minutes = normalize_idle_threshold_minutes(self.idle_threshold_minutes);
-        self.avatar_scale = normalize_avatar_scale(self.avatar_scale);
-        self.avatar_opacity = normalize_avatar_opacity(self.avatar_opacity);
-        self.avatar_preset = normalize_avatar_preset(&self.avatar_preset);
-        self.avatar_persona = normalize_avatar_persona(&self.avatar_persona);
         normalize_manual_followups(&mut self.avatar_followups);
         normalize_manual_followups(&mut self.manual_followups);
         migrate_legacy_avatar_followups(&mut self.manual_followups, &self.avatar_followups);
         normalize_manual_followups(&mut self.manual_followups);
-        self.break_reminder_interval_minutes =
-            normalize_break_reminder_interval_minutes(self.break_reminder_interval_minutes);
         self.daily_report_custom_prompt = self.daily_report_custom_prompt.trim().to_string();
         normalize_prompt_presets(&mut self.daily_report_prompt_presets);
         self.daily_report_export_dir =
@@ -1217,41 +1162,12 @@ fn normalize_prompt_presets(presets: &mut Vec<PromptPreset>) {
     presets.retain(|p| !p.name.is_empty() && !p.prompt.is_empty());
 }
 
-fn normalize_avatar_scale(value: f64) -> f64 {
-    if !value.is_finite() {
-        return default_avatar_scale();
-    }
-
-    value.clamp(0.7, 1.3)
-}
-
-fn normalize_avatar_opacity(value: f64) -> f64 {
-    if !value.is_finite() {
-        return default_avatar_opacity();
-    }
-
-    value.clamp(0.45, 1.0)
-}
-
-fn normalize_avatar_preset(value: &str) -> String {
-    match value.trim() {
-        "original-standard" | "keyboard-focus" | "minimal-office" => value.trim().to_string(),
-        _ => default_avatar_preset(),
-    }
-}
-
-fn normalize_avatar_persona(value: &str) -> String {
-    match value.trim() {
-        "companion" | "assistant" | "coach" => value.trim().to_string(),
-        _ => default_avatar_persona(),
-    }
-}
-
 fn normalize_manual_followups(items: &mut Vec<ManualFollowupItem>) {
     let mut seen = std::collections::HashSet::new();
     items.retain_mut(|item| {
         item.id = item.id.trim().to_string();
         item.title = item.title.trim().to_string();
+        item.note = item.note.trim().to_string();
         item.date = item.date.trim().to_string();
         item.source_app = item.source_app.trim().to_string();
         item.source_title = item.source_title.trim().to_string();
@@ -1315,13 +1231,6 @@ fn migrate_legacy_avatar_followups(
     }
 }
 
-fn normalize_break_reminder_interval_minutes(value: u64) -> u64 {
-    match value {
-        30 | 45 | 50 | 60 | 90 | 120 => value,
-        _ => default_break_reminder_interval_minutes(),
-    }
-}
-
 /// 截屏间隔最低 5 秒，防止配置值过小导致 CPU/磁盘占用过高
 fn normalize_screenshot_interval(value: u64) -> u64 {
     value.clamp(5, 600)
@@ -1349,52 +1258,10 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_avatar_opacity, default_avatar_persona, default_avatar_preset,
-        default_avatar_scale, normalize_app_category_rules, normalize_manual_followups,
-        normalize_avatar_opacity, normalize_avatar_persona, normalize_avatar_preset,
-        normalize_avatar_scale, AiProvider, AppCategoryRule, AppConfig, ManualFollowupItem,
-        ScreenshotDisplayMode, WebsiteSemanticRule, DEFAULT_LOCALHOST_API_PORT,
+        normalize_app_category_rules, normalize_manual_followups, AiProvider, AppCategoryRule,
+        AppConfig, ManualFollowupItem, ScreenshotDisplayMode, WebsiteSemanticRule,
+        DEFAULT_LOCALHOST_API_PORT,
     };
-
-    #[test]
-    fn 桌宠缩放默认值应为百分之九十() {
-        let config = AppConfig::default();
-
-        assert_eq!(config.avatar_scale, default_avatar_scale());
-        assert_eq!(config.avatar_scale, 0.9);
-    }
-
-    #[test]
-    fn 桌宠透明度默认值应为百分之八十二() {
-        let config = AppConfig::default();
-
-        assert_eq!(config.avatar_opacity, default_avatar_opacity());
-        assert_eq!(config.avatar_opacity, 0.82);
-    }
-
-    #[test]
-    fn 桌宠官方预设默认应为原版标准模式() {
-        let config = AppConfig::default();
-
-        assert_eq!(config.avatar_preset, default_avatar_preset());
-        assert_eq!(config.avatar_preset, "original-standard");
-    }
-
-    #[test]
-    fn 桌宠互动风格默认应为助手型() {
-        let config = AppConfig::default();
-
-        assert_eq!(config.avatar_persona, default_avatar_persona());
-        assert_eq!(config.avatar_persona, "assistant");
-    }
-
-    #[test]
-    fn 桌宠默认位置应为空以便首次按锚点吸附() {
-        let config = AppConfig::default();
-
-        assert_eq!(config.avatar_x, None);
-        assert_eq!(config.avatar_y, None);
-    }
 
     #[test]
     fn 轻量模式默认应关闭() {
@@ -1429,14 +1296,6 @@ mod tests {
     }
 
     #[test]
-    fn 休息提醒默认应关闭且间隔为五十分钟() {
-        let config = AppConfig::default();
-
-        assert!(!config.break_reminder_enabled);
-        assert_eq!(config.break_reminder_interval_minutes, 50);
-    }
-
-    #[test]
     fn 开机自启动默认应显示主界面() {
         let config = AppConfig::default();
 
@@ -1461,43 +1320,12 @@ mod tests {
     }
 
     #[test]
-    fn 桌宠缩放应被钳制在允许范围内() {
-        assert_eq!(normalize_avatar_scale(0.3), 0.7);
-        assert_eq!(normalize_avatar_scale(2.0), 1.3);
-        assert_eq!(normalize_avatar_scale(f64::NAN), 0.9);
-    }
-
-    #[test]
-    fn 桌宠透明度应被钳制在允许范围内() {
-        assert_eq!(normalize_avatar_opacity(0.1), 0.45);
-        assert_eq!(normalize_avatar_opacity(1.5), 1.0);
-        assert_eq!(normalize_avatar_opacity(f64::NAN), 0.82);
-    }
-
-    #[test]
-    fn 桌宠预设应被规范到官方预设集合内() {
-        assert_eq!(normalize_avatar_preset("keyboard-focus"), "keyboard-focus");
-        assert_eq!(
-            normalize_avatar_preset(" minimal-office "),
-            "minimal-office"
-        );
-        assert_eq!(normalize_avatar_preset("wild-theme"), "original-standard");
-        assert_eq!(normalize_avatar_preset(""), "original-standard");
-    }
-
-    #[test]
-    fn 桌宠互动风格应被规范到允许集合内() {
-        assert_eq!(normalize_avatar_persona("companion"), "companion");
-        assert_eq!(normalize_avatar_persona(" coach "), "coach");
-        assert_eq!(normalize_avatar_persona("other"), "assistant");
-    }
-
-    #[test]
     fn 手动待跟进应去重并清理非法项() {
         let mut items = vec![
             ManualFollowupItem {
                 id: " 1 ".to_string(),
                 title: " 修复支付页回调 ".to_string(),
+                note: " 保留上下文 ".to_string(),
                 date: "2026-04-18".to_string(),
                 source_app: "Cursor".to_string(),
                 source_title: "payments.ts".to_string(),
@@ -1508,6 +1336,7 @@ mod tests {
             ManualFollowupItem {
                 id: "2".to_string(),
                 title: "修复支付页回调".to_string(),
+                note: String::new(),
                 date: "2026-04-18".to_string(),
                 source_app: "Cursor".to_string(),
                 source_title: "payments.ts".to_string(),
@@ -1518,6 +1347,7 @@ mod tests {
             ManualFollowupItem {
                 id: "3".to_string(),
                 title: "   ".to_string(),
+                note: String::new(),
                 date: "2026-04-18".to_string(),
                 source_app: "Cursor".to_string(),
                 source_title: "payments.ts".to_string(),
@@ -1532,6 +1362,7 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].id, "1");
         assert_eq!(items[0].title, "修复支付页回调");
+        assert_eq!(items[0].note, "保留上下文");
     }
 
     #[test]

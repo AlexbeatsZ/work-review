@@ -357,14 +357,12 @@
     padding: 0.58rem 0.65rem;
   }
 
-  .summary-followup-item strong,
   .summary-intent-meta strong {
     color: #1e293b;
     font-size: 0.88rem;
     font-weight: 650;
   }
 
-  .summary-followup-item small,
   .summary-intent-meta small,
   .summary-lite-empty {
     color: #64748b;
@@ -645,13 +643,11 @@
   }
 
   :global(.dark) .summary-lite-card-header h3,
-  :global(.dark) .summary-followup-item strong,
   :global(.dark) .summary-intent-meta strong {
     color: #f8fafc;
   }
 
   :global(.dark) .summary-lite-card-header p,
-  :global(.dark) .summary-followup-item small,
   :global(.dark) .summary-intent-meta small,
   :global(.dark) .summary-lite-empty {
     color: #94a3b8;

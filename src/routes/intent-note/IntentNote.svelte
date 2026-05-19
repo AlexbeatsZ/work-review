@@ -1,21 +1,31 @@
 <script>
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
+  import { push } from 'svelte-spa-router';
   import { showToast } from '$lib/stores/toast.js';
 
-  let boundary = Math.floor(Date.now() / 1000);
-  let purpose = '';
-  let note = '';
+  const boundaryKey = 'workReviewLite.intentBoundary';
+  let boundary = readBoundary();
   let saved = [];
   let purposes = [];
-  let newPurpose = '';
   let loading = true;
-  let saving = false;
-
-  const today = new Date().toISOString().slice(0, 10);
+  let completingId = null;
 
   function formatTime(ts) {
     return new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function readBoundary() {
+    const stored = Number(sessionStorage.getItem(boundaryKey));
+    if (Number.isFinite(stored) && stored > 0) return stored;
+    const now = Math.floor(Date.now() / 1000);
+    sessionStorage.setItem(boundaryKey, String(now));
+    return now;
+  }
+
+  function updateBoundary(ts) {
+    boundary = ts;
+    sessionStorage.setItem(boundaryKey, String(ts));
   }
 
   async function loadPurposes() {
@@ -30,78 +40,52 @@
     }
   }
 
-  async function addPurpose() {
-    const title = newPurpose.trim();
-    if (!title) return;
-
-    try {
-      const item = await invoke('add_manual_followup', {
-        input: {
-          title,
-          date: today,
-          sourceApp: '',
-          sourceTitle: '',
-          projectKey: title,
-        },
-      });
-      purposes = [item, ...purposes];
-      purpose = title;
-      newPurpose = '';
-    } catch (error) {
-      console.error('新增目的失败:', error);
-      showToast(`新增目的失败: ${error}`, 'error');
-    }
-  }
-
   async function deletePurpose(item) {
     try {
       await invoke('delete_manual_followup', { id: item.id });
       purposes = purposes.filter((candidate) => candidate.id !== item.id);
-      if (purpose === item.title) {
-        purpose = '';
-      }
     } catch (error) {
       console.error('删除目的失败:', error);
       showToast(`删除目的失败: ${error}`, 'error');
     }
   }
 
-  async function completePurpose() {
-    const trimmedPurpose = purpose.trim();
-    if (!trimmedPurpose || saving) return;
+  async function completePurpose(item) {
+    if (!item?.title?.trim() || completingId) return;
 
-    saving = true;
+    completingId = item.id;
     try {
       const result = await invoke('save_intent_note_interval', {
         input: {
-          purpose: trimmedPurpose,
-          note: note.trim() || null,
+          purpose: item.title.trim(),
+          note: item.note?.trim() || null,
           startTimestamp: boundary,
         },
       });
+      await invoke('update_manual_followup_status', { id: item.id, status: 'done' });
       saved = [
         {
-          purpose: trimmedPurpose,
-          note: note.trim(),
+          purpose: item.title.trim(),
+          note: item.note?.trim() || '',
           start: result.startTimestamp,
           end: result.endTimestamp,
           annotatedSegments: result.annotatedSegments,
         },
         ...saved,
       ];
-      boundary = result.endTimestamp;
-      note = '';
+      updateBoundary(result.endTimestamp);
+      purposes = purposes.filter((candidate) => candidate.id !== item.id);
       showToast('目的已回填到活动记录', 'success');
     } catch (error) {
       console.error('保存目的备注失败:', error);
       showToast(`保存目的备注失败: ${error}`, 'error');
     } finally {
-      saving = false;
+      completingId = null;
     }
   }
 
   onMount(() => {
-    boundary = Math.floor(Date.now() / 1000);
+    boundary = readBoundary();
     loadPurposes();
   });
 </script>
@@ -110,7 +94,7 @@
   <section class="intent-header">
     <div>
       <h1>目的备注</h1>
-      <p>从进入本页开始计时。点击打勾后，会把上一段时间的目的回填到真实活动记录上；未打勾离开不会写入。</p>
+      <p>第一次进入本页开始计时。点击队列里的打勾后，会把上一段时间的目的回填到真实活动记录上。</p>
     </div>
     <div class="intent-boundary">
       <span>当前边界</span>
@@ -119,29 +103,12 @@
   </section>
 
   <section class="intent-panel">
-    <div class="intent-current">
-      <label>
-        <span>当前目的</span>
-        <input bind:value={purpose} placeholder="例如：看某课程第 3 节" />
-      </label>
-      <label>
-        <span>备注，可选</span>
-        <textarea bind:value={note} rows="3" placeholder="补充材料、章节、疑问或上下文"></textarea>
-      </label>
-      <button class="intent-complete" on:click={completePurpose} disabled={saving || !purpose.trim()}>
-        {saving ? '保存中...' : '打勾并回填这段时间'}
-      </button>
-    </div>
-
     <div class="intent-library">
       <div class="intent-library-title">
         <h2>长期目的列表</h2>
         <span>{purposes.filter((item) => item.status !== 'done').length}</span>
       </div>
-      <div class="intent-add-row">
-        <input bind:value={newPurpose} placeholder="新增一个长期目的" on:keydown={(event) => event.key === 'Enter' && addPurpose()} />
-        <button on:click={addPurpose} disabled={!newPurpose.trim()}>新增</button>
-      </div>
+      <button class="intent-add-link" on:click={() => push('/intent-note/new')}>添加目的</button>
 
       {#if loading}
         <p class="intent-empty">读取中...</p>
@@ -151,9 +118,12 @@
         <div class="intent-list">
           {#each purposes.filter((item) => item.status !== 'done') as item}
             <div class="intent-item">
-              <button class="intent-pick" on:click={() => (purpose = item.title)}>
+              <div class="intent-item-main">
                 <span>{item.title}</span>
-                {#if item.source_title}<small>{item.source_title}</small>{/if}
+                {#if item.note}<small>{item.note}</small>{/if}
+              </div>
+              <button class="intent-done" on:click={() => completePurpose(item)} disabled={completingId === item.id}>
+                {completingId === item.id ? '保存中' : '打勾'}
               </button>
               <button class="intent-delete" on:click={() => deletePurpose(item)}>删除</button>
             </div>
@@ -229,14 +199,8 @@
     font-size: 20px;
   }
 
-  .intent-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-    gap: 16px;
-    padding: 16px;
-  }
+  .intent-panel { padding: 16px; }
 
-  .intent-current,
   .intent-library,
   .intent-list,
   .intent-saved {
@@ -244,28 +208,12 @@
     gap: 12px;
   }
 
-  label span,
   .intent-library-title h2,
   .intent-saved h2 {
     display: block;
     margin: 0 0 6px;
     font-size: 13px;
     font-weight: 700;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 8px;
-    background: rgba(15, 23, 42, 0.9);
-    color: rgb(241, 245, 249);
-    padding: 10px 12px;
-    outline: none;
-  }
-
-  textarea {
-    resize: vertical;
   }
 
   button {
@@ -279,15 +227,7 @@
     opacity: 0.5;
   }
 
-  .intent-complete {
-    min-height: 44px;
-    background: rgb(16, 185, 129);
-    color: white;
-    font-weight: 700;
-  }
-
   .intent-library-title,
-  .intent-add-row,
   .intent-item {
     display: flex;
     align-items: center;
@@ -298,15 +238,12 @@
     justify-content: space-between;
   }
 
-  .intent-add-row input {
-    flex: 1;
-  }
-
-  .intent-add-row button,
-  .intent-delete {
-    padding: 9px 12px;
-    background: rgba(59, 130, 246, 0.16);
-    color: rgb(191, 219, 254);
+  .intent-add-link {
+    justify-self: start;
+    padding: 10px 14px;
+    background: rgb(59, 130, 246);
+    color: white;
+    font-weight: 700;
   }
 
   .intent-item {
@@ -316,24 +253,32 @@
     border-radius: 8px;
   }
 
-  .intent-pick {
+  .intent-item-main {
     min-width: 0;
     flex: 1;
-    background: transparent;
     color: rgb(226, 232, 240);
-    text-align: left;
   }
 
-  .intent-pick span,
-  .intent-pick small {
+  .intent-item-main span,
+  .intent-item-main small {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .intent-pick small {
+  .intent-item-main small {
     color: rgb(148, 163, 184);
+  }
+
+  .intent-done,
+  .intent-delete {
+    padding: 9px 12px;
+  }
+
+  .intent-done {
+    background: rgba(16, 185, 129, 0.16);
+    color: rgb(110, 231, 183);
   }
 
   .intent-delete {

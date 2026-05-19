@@ -1220,13 +1220,6 @@
     gap: 1rem;
   }
 
-  .manual-followups-header h3 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 0.96rem;
-    font-weight: 700;
-  }
-
   .manual-followups-header p {
     margin: 0.15rem 0 0;
     color: #64748b;
@@ -1806,7 +1799,6 @@
     box-shadow: 0 16px 36px rgba(2, 6, 23, 0.28);
   }
 
-  :global(.dark) .manual-followups-header h3,
   :global(.dark) .manual-followups-title {
     color: #f8fafc;
   }

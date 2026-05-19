@@ -101,30 +101,6 @@ pub fn has_accessibility_permission(prompt: bool) -> bool {
     }
 }
 
-/// 检查 macOS 输入监控（Input Monitoring）权限
-/// 桌宠全局键盘鼠标联动需要此权限
-#[cfg(target_os = "macos")]
-pub fn has_input_monitoring_permission() -> bool {
-    extern "C" {
-        fn CGPreflightListenEventAccess() -> bool;
-    }
-
-    unsafe { CGPreflightListenEventAccess() }
-}
-
-/// 请求 macOS 输入监控（Input Monitoring）权限
-/// 会触发系统引导，用户需要在系统设置中手动授权
-#[cfg(target_os = "macos")]
-pub fn request_input_monitoring_permission() {
-    extern "C" {
-        fn CGRequestListenEventAccess() -> bool;
-    }
-
-    unsafe {
-        CGRequestListenEventAccess();
-    }
-}
-
 #[cfg(not(target_os = "macos"))]
 pub fn has_screen_capture_permission() -> bool {
     true
@@ -134,14 +110,6 @@ pub fn has_screen_capture_permission() -> bool {
 pub fn has_accessibility_permission(_prompt: bool) -> bool {
     true
 }
-
-#[cfg(not(target_os = "macos"))]
-pub fn has_input_monitoring_permission() -> bool {
-    true
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn request_input_monitoring_permission() {}
 
 /// 截屏结果
 #[derive(Debug, Clone)]

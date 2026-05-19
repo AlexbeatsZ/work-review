@@ -125,12 +125,6 @@
       if (typeof config.lightweight_mode !== 'boolean') {
         config.lightweight_mode = false;
       }
-      if (typeof config.break_reminder_enabled !== 'boolean') {
-        config.break_reminder_enabled = false;
-      }
-      if (![30, 45, 50, 60, 90, 120].includes(config.break_reminder_interval_minutes)) {
-        config.break_reminder_interval_minutes = 50;
-      }
       if (typeof config.auto_start_silent !== 'boolean') {
         config.auto_start_silent = false;
       }

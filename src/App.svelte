@@ -7,6 +7,7 @@
   import Timeline from './routes/timeline/Timeline.svelte';
   import Summary from './routes/timeline/Summary.svelte';
   import IntentNote from './routes/intent-note/IntentNote.svelte';
+  import IntentNoteNew from './routes/intent-note/IntentNoteNew.svelte';
   import Settings from './routes/settings/Settings.svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
@@ -83,6 +84,7 @@
     '/timeline': Timeline,
     '/timeline/summary': Summary,
     '/intent-note': IntentNote,
+    '/intent-note/new': IntentNoteNew,
     '/settings': Settings,
   };
 
