@@ -886,7 +886,9 @@ mod tests {
     #[test]
     fn 已包含_chat_completions_的端点不应重复拼接() {
         assert_eq!(
-            openai_compatible_chat_completion_urls("https://ark.cn-beijing.volces.com/api/v3/chat/completions"),
+            openai_compatible_chat_completion_urls(
+                "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+            ),
             vec!["https://ark.cn-beijing.volces.com/api/v3/chat/completions".to_string()]
         );
         assert_eq!(

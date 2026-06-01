@@ -348,7 +348,7 @@ impl Default for PrivacyConfig {
                 "支付".to_string(),
             ],
             excluded_domains: vec![], // 默认无域名黑名单
-            filter_sensitive: true, // 已弃用，保留兼容
+            filter_sensitive: true,   // 已弃用，保留兼容
             excluded_apps: vec![],
         }
     }
@@ -360,7 +360,8 @@ impl PrivacyConfig {
         let normalized = crate::categorize::normalize_display_app_name(app_name).to_lowercase();
         // 先检查新的规则（规范化后精确匹配 + 包含匹配）
         for rule in &self.app_rules {
-            let rule_normalized = crate::categorize::normalize_display_app_name(&rule.app_name).to_lowercase();
+            let rule_normalized =
+                crate::categorize::normalize_display_app_name(&rule.app_name).to_lowercase();
             // 精确匹配或包含匹配（应用名包含规则名，处理 "Google Chrome" 包含 "Chrome" 的情况）
             if normalized == rule_normalized || normalized.contains(&rule_normalized) {
                 log::debug!(
@@ -374,7 +375,8 @@ impl PrivacyConfig {
         }
         // 兼容旧版 excluded_apps（视为 Ignored）
         for excluded in &self.excluded_apps {
-            let excluded_normalized = crate::categorize::normalize_display_app_name(excluded).to_lowercase();
+            let excluded_normalized =
+                crate::categorize::normalize_display_app_name(excluded).to_lowercase();
             if normalized.contains(&excluded_normalized) {
                 return PrivacyLevel::Ignored;
             }
@@ -689,6 +691,9 @@ pub struct AppConfig {
     /// 是否启用工作时间过滤。关闭后所有活动都算"工作时间"，不再区分
     #[serde(default = "default_true")]
     pub work_time_enabled: bool,
+    /// 单独指定 SQLite 数据库文件路径。为空时使用数据目录下的 workreview.db。
+    #[serde(default)]
+    pub database_path: Option<String>,
 
     // 兼容旧版配置
     #[serde(default)]
@@ -798,6 +803,7 @@ impl Default for AppConfig {
                 },
             ],
             work_time_enabled: true,
+            database_path: None,
             // 旧版兼容字段
             ai_provider: AiProviderConfig::default(),
             ollama_host: "http://localhost:11434".to_string(),
@@ -837,6 +843,7 @@ impl AppConfig {
         normalize_prompt_presets(&mut self.daily_report_prompt_presets);
         self.daily_report_export_dir =
             normalize_optional_string(self.daily_report_export_dir.take());
+        self.database_path = normalize_optional_string(self.database_path.take());
         self.localhost_api_port = normalize_localhost_api_port(self.localhost_api_port);
         self.localhost_api_host = normalize_optional_string(self.localhost_api_host.take());
         self.node_gateway.device_name =

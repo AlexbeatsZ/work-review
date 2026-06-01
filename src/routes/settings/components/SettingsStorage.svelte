@@ -9,12 +9,14 @@
   export let config;
   export let storageStats = null;
   export let dataDir = '';
+  export let databasePath = '';
   export let defaultDataDir = '';
   
   const dispatch = createEventDispatcher();
   $: currentLocale = $locale;
   let isClearing = false;
   let isMigrating = false;
+  let isMigratingDatabase = false;
   let isCleaningPreviousDir = false;
   let cleanupCandidateDir = '';
   let localizedScreenshotModes = [];
@@ -120,6 +122,41 @@
     }
 
     await migrateToDataDir(selected);
+  }
+
+  async function pickDatabaseDir() {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      defaultPath: databasePath || dataDir || defaultDataDir || undefined,
+    });
+
+    if (!selected || Array.isArray(selected)) {
+      return;
+    }
+
+    const confirmed = await ask(
+      `将把当前 SQLite 数据库迁移到：\n${selected}\\workreview.db\n\n截图、OCR、配置仍保留在当前数据目录。SQLite 运行时可能会在同目录生成 .db-wal / .db-shm 文件。是否继续？`,
+      {
+        title: '确认迁移数据库文件',
+        kind: 'warning',
+      },
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    isMigratingDatabase = true;
+    try {
+      const result = await invoke('change_database_path', { targetPath: selected });
+      showToast('数据库位置已更新', 'success');
+      dispatch('databasePathChanged', result);
+    } catch (e) {
+      showToast(`数据库迁移失败: ${e}`, 'error');
+    } finally {
+      isMigratingDatabase = false;
+    }
   }
 
   async function restoreDefaultDataDir() {
@@ -490,6 +527,28 @@
           <div>
             <p class="settings-text">{t('settingsStorage.defaultDir')}</p>
             <p class="settings-muted mt-1 break-all">{defaultDataDir || t('common.loading')}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-slate-200/80 bg-white/60 p-3 dark:border-slate-700/80 dark:bg-slate-900/20">
+          <p class="settings-text">当前数据库文件</p>
+          <p class="settings-muted mt-1 break-all">{databasePath || t('common.loading')}</p>
+          <p class="settings-muted mt-1">
+            可单独迁移 SQLite DB。截图、OCR 和配置仍保留在上方数据目录。
+          </p>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              on:click={pickDatabaseDir}
+              disabled={isMigrating || isMigratingDatabase}
+              class="settings-action-secondary"
+            >
+              {#if isMigratingDatabase}
+                迁移数据库中...
+              {:else}
+                更改数据库位置
+              {/if}
+            </button>
           </div>
         </div>
 

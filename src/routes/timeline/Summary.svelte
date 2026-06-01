@@ -293,8 +293,8 @@
   }
 
   .summary-lite-panels {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    justify-content: center;
     gap: 1rem;
   }
 
@@ -302,6 +302,7 @@
     display: grid;
     align-content: start;
     gap: 0.8rem;
+    width: min(100%, 34rem);
     border: 1px solid rgba(226, 232, 240, 0.9);
     border-radius: 1rem;
     background: rgba(255, 255, 255, 0.78);

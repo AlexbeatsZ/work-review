@@ -1,6 +1,6 @@
 use crate::analysis::AppLocale;
 use crate::config::{
-    AppCategoryRule, AppConfig, ManualFollowupItem, CustomSemanticCategory, PrivacyConfig,
+    AppCategoryRule, AppConfig, CustomSemanticCategory, ManualFollowupItem, PrivacyConfig,
     WebsiteSemanticRule,
 };
 use crate::database::Database;
@@ -1025,30 +1025,28 @@ pub(crate) async fn generate_report_inner(
             .await
     });
 
-    let report_result = match tokio::time::timeout(
-        std::time::Duration::from_secs(300),
-        spawn_result,
-    )
-    .await
-    {
-        Ok(Ok(result)) => result,
-        Ok(Err(_)) => Err(work_review_core::error::AppError::Analysis(
-            match report_locale {
-                AppLocale::ZhCn => "日报生成过程中发生内部错误，请重试".to_string(),
-                AppLocale::ZhTw => "日報生成過程中發生內部錯誤，請重試".to_string(),
-                AppLocale::En => {
-                    "Internal error during report generation, please retry".to_string()
-                }
-            },
-        )),
-        Err(_) => Err(work_review_core::error::AppError::Analysis(
-            match report_locale {
-                AppLocale::ZhCn => "日报生成超时，请稍后重试".to_string(),
-                AppLocale::ZhTw => "日報生成逾時，請稍後重試".to_string(),
-                AppLocale::En => "Report generation timed out, please try again later".to_string(),
-            },
-        )),
-    };
+    let report_result =
+        match tokio::time::timeout(std::time::Duration::from_secs(300), spawn_result).await {
+            Ok(Ok(result)) => result,
+            Ok(Err(_)) => Err(work_review_core::error::AppError::Analysis(
+                match report_locale {
+                    AppLocale::ZhCn => "日报生成过程中发生内部错误，请重试".to_string(),
+                    AppLocale::ZhTw => "日報生成過程中發生內部錯誤，請重試".to_string(),
+                    AppLocale::En => {
+                        "Internal error during report generation, please retry".to_string()
+                    }
+                },
+            )),
+            Err(_) => Err(work_review_core::error::AppError::Analysis(
+                match report_locale {
+                    AppLocale::ZhCn => "日报生成超时，请稍后重试".to_string(),
+                    AppLocale::ZhTw => "日報生成逾時，請稍後重試".to_string(),
+                    AppLocale::En => {
+                        "Report generation timed out, please try again later".to_string()
+                    }
+                },
+            )),
+        };
 
     let generated_report = report_result?;
     let report = generated_report.content.clone();
@@ -1109,7 +1107,9 @@ pub async fn generate_report(
         }
         s.generating_report = true;
     }
-    let _guard = ReportGenerationGuard { state: state.inner().clone() };
+    let _guard = ReportGenerationGuard {
+        state: state.inner().clone(),
+    };
     generate_report_inner(date, force, locale, &app, state.inner()).await
 }
 
@@ -1131,7 +1131,10 @@ pub(crate) fn get_saved_report_inner(
     // 用最新的 stats 重新渲染统计区块，解决 issue #80：保存的 markdown 里固化的时长
     // 数字会随着工作日继续推进而变得陈旧。老报告若没有占位符标记则原样返回。
     let segments = state.config.effective_work_segments();
-    if let Ok(raw_stats) = state.database.get_daily_stats_with_segments(&date, &segments) {
+    if let Ok(raw_stats) = state
+        .database
+        .get_daily_stats_with_segments(&date, &segments)
+    {
         let (ignored_apps, excluded_domains) = collect_privacy_filters(&state);
         let live_stats = apply_excluded_domains_to_stats(
             apply_ignored_apps_to_stats(raw_stats, &ignored_apps),
@@ -1170,7 +1173,11 @@ pub async fn update_report_content(
     let existing = state
         .database
         .get_report(&date, Some(locale_code))?
-        .ok_or_else(|| AppError::Database(rusqlite::Error::InvalidParameterName("报告不存在".to_string())))?;
+        .ok_or_else(|| {
+            AppError::Database(rusqlite::Error::InvalidParameterName(
+                "报告不存在".to_string(),
+            ))
+        })?;
     let updated = DailyReport {
         content,
         ..existing
@@ -1263,7 +1270,10 @@ pub(crate) fn persist_app_config(
 
         // 更新隐私过滤器
         state.privacy_filter.update_config(&config.privacy);
-        (previous_config.hide_dock_icon, previous_config.lightweight_mode)
+        (
+            previous_config.hide_dock_icon,
+            previous_config.lightweight_mode,
+        )
     };
 
     let dock_visibility_changed = previous_hide_dock_icon != config.hide_dock_icon
@@ -1396,16 +1406,8 @@ pub async fn add_manual_followup(
         return Err(AppError::Config("待跟进日期不能为空".to_string()));
     }
 
-    let source_app = input
-        .source_app
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    let source_title = input
-        .source_title
-        .unwrap_or_default()
-        .trim()
-        .to_string();
+    let source_app = input.source_app.unwrap_or_default().trim().to_string();
+    let source_title = input.source_title.unwrap_or_default().trim().to_string();
     let note = input.note.unwrap_or_default().trim().to_string();
     let project_key = input
         .project_key
@@ -1468,7 +1470,11 @@ pub async fn update_manual_followup_status(
         state.config.clone()
     };
 
-    if let Some(item) = config.manual_followups.iter_mut().find(|item| item.id == id) {
+    if let Some(item) = config
+        .manual_followups
+        .iter_mut()
+        .find(|item| item.id == id)
+    {
         item.status = next_status.to_string();
     } else {
         return Err(AppError::Config("待跟进不存在".to_string()));
@@ -1526,7 +1532,11 @@ fn flush_current_activity_for_intent(state: &Arc<Mutex<AppState>>, now_ts: i64) 
         .as_deref()
         .filter(|value| !value.is_empty())
     {
-        state_guard.database.get_latest_activity_by_url(url).ok().flatten()
+        state_guard
+            .database
+            .get_latest_activity_by_url(url)
+            .ok()
+            .flatten()
     } else {
         state_guard
             .database
@@ -1613,6 +1623,15 @@ pub async fn save_intent_note_interval(
 pub async fn get_data_dir(state: State<'_, Arc<Mutex<AppState>>>) -> Result<String, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     Ok(path_for_display(&state.data_dir))
+}
+
+/// 获取当前 SQLite 数据库文件路径
+#[tauri::command]
+pub async fn get_database_path(
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<String, AppError> {
+    let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+    Ok(path_for_display(&state.db_path))
 }
 
 /// 获取默认数据目录
@@ -1869,7 +1888,7 @@ pub async fn change_data_dir(
     let copied_files = copy_managed_data_without_live_db(&current_dir, &target_dir)?;
 
     // 短暂获取锁，做安全 SQLite 备份，然后立即释放
-    let config = {
+    let mut config = {
         let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
         // SQLite 备份必须在持锁状态下执行（backup_to 内部做 WAL checkpoint + VACUUM INTO）
         state
@@ -1877,6 +1896,7 @@ pub async fn change_data_dir(
             .backup_to(&target_dir.join("workreview.db"))?;
         state.config.clone()
     };
+    config.database_path = None;
 
     let config_path = target_dir.join("config.json");
     config.save(&config_path)?;
@@ -1891,7 +1911,9 @@ pub async fn change_data_dir(
     state.privacy_filter = PrivacyFilter::from_config(&config.privacy);
     state.screenshot_service = ScreenshotService::new(&target_dir, &config.storage);
     state.storage_manager = StorageManager::new(&target_dir, config.storage.clone());
+    state.config = config;
     state.data_dir = target_dir.clone();
+    state.db_path = target_dir.join("workreview.db");
     state.config_path = config_path;
 
     log::info!("数据目录已切换到: {:?}", target_dir);
@@ -1908,6 +1930,92 @@ pub async fn change_data_dir(
             copied_files,
             if replaced_existing_data { "，并覆盖旧目录中的 Work Review 数据" } else { "" }
         ),
+    }))
+}
+
+fn normalize_database_target_path(requested_path: PathBuf) -> PathBuf {
+    if requested_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("db"))
+    {
+        requested_path
+    } else {
+        requested_path.join("workreview.db")
+    }
+}
+
+/// 单独切换 SQLite 数据库文件位置。截图、OCR、配置仍保留在当前数据目录。
+#[tauri::command]
+pub async fn change_database_path(
+    target_path: String,
+    app: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<serde_json::Value, AppError> {
+    let requested = target_path.trim();
+    if requested.is_empty() {
+        return Err(AppError::Config("目标数据库路径不能为空".to_string()));
+    }
+
+    let requested_path = normalize_database_target_path(to_absolute_path(Path::new(requested))?);
+    let target_parent = requested_path
+        .parent()
+        .ok_or_else(|| AppError::Config("目标数据库路径无效".to_string()))?;
+    std::fs::create_dir_all(target_parent)?;
+    let target_parent = target_parent
+        .canonicalize()
+        .unwrap_or_else(|_| target_parent.to_path_buf());
+    let target_path = target_parent.join(
+        requested_path
+            .file_name()
+            .ok_or_else(|| AppError::Config("目标数据库文件名无效".to_string()))?,
+    );
+
+    let current_path = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state
+            .db_path
+            .canonicalize()
+            .unwrap_or_else(|_| state.db_path.clone())
+    };
+
+    if current_path == target_path {
+        return Ok(serde_json::json!({
+            "databasePath": target_path.to_string_lossy().to_string(),
+            "message": "数据库路径未变化",
+        }));
+    }
+
+    if target_path.exists() {
+        return Err(AppError::Config(
+            "目标数据库文件已存在。请先备份/改名，或选择一个空目录。".to_string(),
+        ));
+    }
+
+    let mut config = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        state.database.backup_to(&target_path)?;
+        state.config.clone()
+    };
+
+    config.database_path = Some(target_path.to_string_lossy().to_string());
+
+    let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+    state.database = Database::new(&target_path)?;
+    if let Err(e) = state.database.rebuild_fts_index() {
+        log::warn!("切换数据库路径后 FTS 索引重建失败: {e}");
+    }
+    config.save(&state.config_path)?;
+    state.config = config;
+    state.db_path = target_path.clone();
+
+    drop(state);
+    crate::emit_recording_state_changed(&app);
+
+    Ok(serde_json::json!({
+        "databasePath": target_path.to_string_lossy().to_string(),
+        "oldDatabasePath": current_path.to_string_lossy().to_string(),
+        "message": "数据库文件位置已更新",
     }))
 }
 
@@ -2195,7 +2303,9 @@ pub async fn get_recent_apps(
 }
 
 /// 应用分类概览 —— 内部复用版
-pub(crate) fn get_app_category_overview_inner(state: &Arc<Mutex<AppState>>) -> Result<Vec<AppCategoryOverviewItem>, AppError> {
+pub(crate) fn get_app_category_overview_inner(
+    state: &Arc<Mutex<AppState>>,
+) -> Result<Vec<AppCategoryOverviewItem>, AppError> {
     let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let overview = s.database.get_app_category_overview()?;
 
@@ -2379,7 +2489,9 @@ pub struct CategoryInfo {
 }
 
 /// 分类信息 —— 内部复用版
-pub(crate) fn get_categories_inner(state: &Arc<Mutex<AppState>>) -> Result<Vec<CategoryInfo>, AppError> {
+pub(crate) fn get_categories_inner(
+    state: &Arc<Mutex<AppState>>,
+) -> Result<Vec<CategoryInfo>, AppError> {
     let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let mut result = Vec::new();
     let builtins: Vec<(&str, &str, &str, &str)> = vec![
@@ -2541,7 +2653,9 @@ pub struct SemanticCategoryInfo {
 }
 
 /// 语义分类信息 —— 内部复用版
-pub(crate) fn get_semantic_categories_inner(state: &Arc<Mutex<AppState>>) -> Result<Vec<SemanticCategoryInfo>, AppError> {
+pub(crate) fn get_semantic_categories_inner(
+    state: &Arc<Mutex<AppState>>,
+) -> Result<Vec<SemanticCategoryInfo>, AppError> {
     let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let mut result = Vec::new();
     let builtins: Vec<(&str, &str)> = vec![
@@ -2843,7 +2957,9 @@ fn get_running_apps_impl() -> Result<Vec<String>, AppError> {
 }
 
 /// 获取存储统计信息 —— 内部复用版
-pub(crate) fn get_storage_stats_inner(state: &Arc<Mutex<AppState>>) -> Result<serde_json::Value, AppError> {
+pub(crate) fn get_storage_stats_inner(
+    state: &Arc<Mutex<AppState>>,
+) -> Result<serde_json::Value, AppError> {
     let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let stats = s
         .storage_manager

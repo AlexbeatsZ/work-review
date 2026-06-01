@@ -302,12 +302,7 @@ fn is_browser_internal_segment(segment: &str) -> bool {
     }
 
     // 标签页/窗口计数 (如 "3 个标签页", "2 tabs", "(3)")
-    let tab_patterns = [
-        "个标签页",
-        "個分頁",
-        "tabs",
-        "tab",
-    ];
+    let tab_patterns = ["个标签页", "個分頁", "tabs", "tab"];
     for pat in &tab_patterns {
         if lower.contains(pat) && lower.len() < 20 {
             return true;
@@ -315,7 +310,8 @@ fn is_browser_internal_segment(segment: &str) -> bool {
     }
 
     // chrome:// internal pages
-    if lower.starts_with("chrome://") || lower.starts_with("edge://") || lower.starts_with("about:") {
+    if lower.starts_with("chrome://") || lower.starts_with("edge://") || lower.starts_with("about:")
+    {
         return true;
     }
 
@@ -434,7 +430,9 @@ pub fn normalize_display_app_name(app_name: &str) -> String {
         "wpp" => "WPS Presentation".to_string(),
         "wpspdf" => "WPS PDF".to_string(),
         // ── 终端 ──
-        "windowsterminal" | "windows terminal" | "windowsterminal.exe" => "Windows Terminal".to_string(),
+        "windowsterminal" | "windows terminal" | "windowsterminal.exe" => {
+            "Windows Terminal".to_string()
+        }
         "powershell" | "pwsh" => "PowerShell".to_string(),
         "cmd" => "Command Prompt".to_string(),
         "iterm2" | "iterm" => "iTerm2".to_string(),
@@ -473,7 +471,9 @@ pub fn normalize_display_app_name(app_name: &str) -> String {
         "canva" => "Canva".to_string(),
         // ── 音乐 / 视频 ──
         "spotify" => "Spotify".to_string(),
-        "netease_cloudmusic" | "cloudmusic" | "网易云音乐" => "NetEase Cloud Music".to_string(),
+        "netease_cloudmusic" | "cloudmusic" | "网易云音乐" => {
+            "NetEase Cloud Music".to_string()
+        }
         "qqmusic" | "qqmusicuniversal" | "qq音乐" => "QQ Music".to_string(),
         "kugou" | "酷狗音乐" => "KuGou Music".to_string(),
         "kuwo" | "酷我音乐" => "KuWo Music".to_string(),
@@ -1745,11 +1745,10 @@ mod tests {
         browser_url_system_events_process_name_macos, browser_url_ui_script_macos,
     };
     use super::{
-        categorize_app, categorize_app_with_rules, clean_browser_window_title,
-        decode_mozlz4_bytes, extract_active_tab_url_from_session_store_value,
-        extract_url_from_title, find_focused_sway_node,
-        firefox_family_profile_dir_from_ini, is_browser_app, is_probable_domain,
-        normalize_display_app_name, normalize_macos_frontmost_app_name,
+        categorize_app, categorize_app_with_rules, clean_browser_window_title, decode_mozlz4_bytes,
+        extract_active_tab_url_from_session_store_value, extract_url_from_title,
+        find_focused_sway_node, firefox_family_profile_dir_from_ini, is_browser_app,
+        is_probable_domain, normalize_display_app_name, normalize_macos_frontmost_app_name,
         normalize_possible_url, parse_gnome_focused_window_dbus_output,
         parse_hyprland_window_bounds, parse_kdotool_geometry_output,
         parse_macos_window_bounds_fields, parse_xdotool_geometry_shell_output,
@@ -1784,7 +1783,7 @@ mod tests {
         assert!(!is_browser_app("Tencent Lemon"));
         assert!(!is_browser_app("Tencent Meeting"));
         assert!(!is_browser_app("WeChat")); // 与 cent 无关，但同属腾讯系
-        // arc 也类似（之前 contains("arc") 会误中 "Arch Linux"、"Search" 等）
+                                            // arc 也类似（之前 contains("arc") 会误中 "Arch Linux"、"Search" 等）
         assert!(!is_browser_app("Arch Linux"));
         assert!(!is_browser_app("Spotlight Search"));
         // 真正的 Cent / Arc 浏览器仍然识别得到

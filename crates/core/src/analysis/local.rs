@@ -1,7 +1,7 @@
 use crate::analysis::report_blocks::{
     render_local_app_usage_list, render_local_category_list, render_local_domain_usage_list,
-    render_local_overview, wrap_block, BLOCK_LOCAL_APP_USAGE, BLOCK_LOCAL_CATEGORY,
-    BLOCK_LOCAL_DOMAIN_USAGE, BLOCK_LOCAL_OVERVIEW, BLOCK_HOURLY_SUMMARY,
+    render_local_overview, wrap_block, BLOCK_HOURLY_SUMMARY, BLOCK_LOCAL_APP_USAGE,
+    BLOCK_LOCAL_CATEGORY, BLOCK_LOCAL_DOMAIN_USAGE, BLOCK_LOCAL_OVERVIEW,
 };
 use crate::analysis::{
     append_custom_prompt_for_locale, format_duration_for_locale, generate_activity_timeline,

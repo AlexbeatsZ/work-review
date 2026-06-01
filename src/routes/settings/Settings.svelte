@@ -19,6 +19,7 @@
   let recentApps = [];
   let storageStats = null;
   let dataDir = '';
+  let databasePath = '';
   let defaultDataDir = '';
   let settingsRuntimePlatform = '';
   let successTimer = null;
@@ -38,10 +39,11 @@
     loading = true;
     error = null;
     try {
-      const [loadedConfig, loadedStorageStats, loadedDataDir, loadedDefaultDataDir, loadedRuntimePlatform] = await Promise.all([
+      const [loadedConfig, loadedStorageStats, loadedDataDir, loadedDatabasePath, loadedDefaultDataDir, loadedRuntimePlatform] = await Promise.all([
         invoke('get_config'),
         invoke('get_storage_stats'),
         invoke('get_data_dir'),
+        invoke('get_database_path'),
         invoke('get_default_data_dir'),
         invoke('get_runtime_platform'),
       ]);
@@ -50,6 +52,7 @@
       cache.setConfig(config);
       storageStats = loadedStorageStats;
       dataDir = loadedDataDir;
+      databasePath = loadedDatabasePath;
       defaultDataDir = loadedDefaultDataDir;
       settingsRuntimePlatform = loadedRuntimePlatform;
 
@@ -123,8 +126,9 @@
         config.vision_model = { provider: 'ollama', endpoint: 'http://localhost:11434', api_key: null, model: 'llava' };
       }
       if (typeof config.lightweight_mode !== 'boolean') {
-        config.lightweight_mode = false;
+        config.lightweight_mode = true;
       }
+      config.lightweight_mode = true;
       if (typeof config.auto_start_silent !== 'boolean') {
         config.auto_start_silent = false;
       }
@@ -212,12 +216,14 @@
   // 清理缓存回调
   async function handleClearCache() {
     try {
-      const [latestStats, latestDataDir] = await Promise.all([
+      const [latestStats, latestDataDir, latestDatabasePath] = await Promise.all([
         invoke('get_storage_stats'),
         invoke('get_data_dir'),
+        invoke('get_database_path'),
       ]);
       storageStats = latestStats;
       dataDir = latestDataDir;
+      databasePath = latestDatabasePath;
     } catch (e) {
       console.error('刷新存储状态失败:', e);
     }
@@ -225,12 +231,14 @@
 
   async function handleDataDirChanged() {
     try {
-      const [latestStats, latestDataDir] = await Promise.all([
+      const [latestStats, latestDataDir, latestDatabasePath] = await Promise.all([
         invoke('get_storage_stats'),
         invoke('get_data_dir'),
+        invoke('get_database_path'),
       ]);
       storageStats = latestStats;
       dataDir = latestDataDir;
+      databasePath = latestDatabasePath;
       cache.clear();
     } catch (e) {
       console.error('切换数据目录后刷新状态失败:', e);
@@ -355,10 +363,12 @@
             bind:config
             {storageStats}
             {dataDir}
+            {databasePath}
             {defaultDataDir}
             on:change={() => dirty = true}
             on:clearCache={handleClearCache}
             on:dataDirChanged={handleDataDirChanged}
+            on:databasePathChanged={handleDataDirChanged}
           />
         {/if}
         </div>

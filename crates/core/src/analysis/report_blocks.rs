@@ -141,7 +141,9 @@ pub fn render_category_table(stats: &DailyStats, locale: AppLocale) -> String {
     out.push_str(match locale {
         AppLocale::ZhCn => "## 二、时间分配\n\n| 类别 | 时长 | 占比 |\n|:--|--:|--:|\n",
         AppLocale::ZhTw => "## 二、時間分配\n\n| 類別 | 時長 | 佔比 |\n|:--|--:|--:|\n",
-        AppLocale::En => "## 2. Time Allocation\n\n| Category | Duration | Share |\n|:--|--:|--:|\n",
+        AppLocale::En => {
+            "## 2. Time Allocation\n\n| Category | Duration | Share |\n|:--|--:|--:|\n"
+        }
     });
     for cat in &stats.category_usage {
         let percentage = if stats.total_duration > 0 {
@@ -166,12 +168,8 @@ pub fn render_app_usage_table(stats: &DailyStats, locale: AppLocale) -> String {
     }
     let mut out = String::new();
     out.push_str(match locale {
-        AppLocale::ZhCn => {
-            "## 三、应用使用明细\n\n| 序号 | 应用名称 | 使用时长 |\n|--:|:--|--:|\n"
-        }
-        AppLocale::ZhTw => {
-            "## 三、應用使用明細\n\n| 序號 | 應用名稱 | 使用時長 |\n|--:|:--|--:|\n"
-        }
+        AppLocale::ZhCn => "## 三、应用使用明细\n\n| 序号 | 应用名称 | 使用时长 |\n|--:|:--|--:|\n",
+        AppLocale::ZhTw => "## 三、應用使用明細\n\n| 序號 | 應用名稱 | 使用時長 |\n|--:|:--|--:|\n",
         AppLocale::En => "## 3. App Details\n\n| # | App | Duration |\n|--:|:--|--:|\n",
     });
     for (index, app) in stats.app_usage.iter().enumerate() {
@@ -207,12 +205,8 @@ pub fn render_domain_usage_table(stats: &DailyStats, locale: AppLocale) -> Strin
     }
     let mut out = String::new();
     out.push_str(match locale {
-        AppLocale::ZhCn => {
-            "## 五、网站访问明细\n\n| 序号 | 网站域名 | 访问时长 |\n|--:|:--|--:|\n"
-        }
-        AppLocale::ZhTw => {
-            "## 五、網站造訪明細\n\n| 序號 | 網站網域 | 造訪時長 |\n|--:|:--|--:|\n"
-        }
+        AppLocale::ZhCn => "## 五、网站访问明细\n\n| 序号 | 网站域名 | 访问时长 |\n|--:|:--|--:|\n",
+        AppLocale::ZhTw => "## 五、網站造訪明細\n\n| 序號 | 網站網域 | 造訪時長 |\n|--:|:--|--:|\n",
         AppLocale::En => "## 5. Website Details\n\n| # | Domain | Duration |\n|--:|:--|--:|\n",
     });
     for (index, domain) in stats.domain_usage.iter().enumerate() {
@@ -354,7 +348,9 @@ mod tests {
         let wrapped = wrap_block(BLOCK_CATEGORY_TABLE, "hello\n");
         assert!(wrapped.starts_with("<!-- WR_BLOCK_START:CATEGORY_TABLE -->\n"));
         assert!(wrapped.contains("hello\n"));
-        assert!(wrapped.trim_end().ends_with("<!-- WR_BLOCK_END:CATEGORY_TABLE -->"));
+        assert!(wrapped
+            .trim_end()
+            .ends_with("<!-- WR_BLOCK_END:CATEGORY_TABLE -->"));
     }
 
     #[test]

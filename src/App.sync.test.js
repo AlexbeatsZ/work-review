@@ -30,17 +30,16 @@ test('托盘和设置的配置变更应回推到前端缓存与设置页', async
   assert.match(rustSource, /config-changed/);
 });
 
-test('轻量模式关闭主界面时应触发窗口关闭而非仅隐藏', async () => {
+test('关闭主界面时应释放窗口而非仅隐藏', async () => {
   const source = await readFile(new URL('./App.svelte', import.meta.url), 'utf8');
 
-  assert.match(source, /runtimeConfig\?\.lightweight_mode/);
   assert.match(source, /await appWindow\.close\(\)/);
-  assert.match(source, /await appWindow\.hide\(\)/);
+  assert.doesNotMatch(source, /await appWindow\.hide\(\)/);
 });
 
-test('自动检查更新不应在网络请求前提前写入最后检查时间', async () => {
+test('Lite 版本不应启动自动更新检查', async () => {
   const source = await readFile(new URL('./App.svelte', import.meta.url), 'utf8');
 
-  assert.match(source, /await runUpdateFlow\(/);
+  assert.doesNotMatch(source, /runUpdateFlow/);
   assert.doesNotMatch(source, /invoke\('update_last_check_time'\)/);
 });

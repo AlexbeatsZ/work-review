@@ -2,7 +2,6 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { formatDurationLocalized, locale, t } from '$lib/i18n/index.js';
-  import SettingsAppearance from './SettingsAppearance.svelte';
 
   export let config;
 
@@ -183,11 +182,6 @@
     } catch (e) {
       console.error('设置 Dock 图标失败:', e);
     }
-    dispatch('change', config);
-  }
-
-  function toggleLightweightMode() {
-    config.lightweight_mode = !config.lightweight_mode;
     dispatch('change', config);
   }
 
@@ -386,21 +380,7 @@
           </button>
         </div>
 
-        <div class="settings-row">
-          <div>
-            <span class="settings-text">{t('settingsGeneral.lightweightMode')}</span>
-            <p class="settings-muted mt-0.5">{t('settingsGeneral.lightweightModeDescription')}</p>
-          </div>
-          <button
-            on:click={toggleLightweightMode}
-            class="switch-track {config.lightweight_mode ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}"
-          >
-            <span class="switch-thumb {config.lightweight_mode ? 'translate-x-5' : 'translate-x-0'}"></span>
-          </button>
-        </div>
       </div>
     </div>
   </div>
 </div>
-
-<SettingsAppearance bind:config mode="background-only" on:change={handleChange} />

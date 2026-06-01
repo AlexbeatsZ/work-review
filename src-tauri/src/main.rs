@@ -35,7 +35,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use storage::StorageManager;
-use tauri::menu::{CheckMenuItem, CheckMenuItemBuilder, MenuBuilder, MenuItem, MenuItemBuilder};
+use tauri::menu::{MenuBuilder, MenuItem, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position};
 
@@ -45,17 +45,13 @@ const MAIN_WINDOW_LABEL: &str = "main";
 const AUTOSTART_LAUNCH_ARG: &str = "--autostart";
 const TRAY_MENU_SHOW_ID: &str = "show";
 const TRAY_MENU_RECORDING_TOGGLE_ID: &str = "recording-toggle";
-const TRAY_MENU_LIGHTWEIGHT_MODE_ID: &str = "lightweight-mode";
 const TRAY_MENU_QUIT_ID: &str = "quit";
 pub(crate) const RECORDING_STATE_CHANGED_EVENT: &str = "recording-state-changed";
 pub(crate) const CONFIG_CHANGED_EVENT: &str = "config-changed";
 
 type AppMenuItem = MenuItem<tauri::Wry>;
-type AppCheckMenuItem = CheckMenuItem<tauri::Wry>;
-
 pub(crate) struct TrayMenuState {
     recording_toggle: AppMenuItem,
-    lightweight_mode: AppCheckMenuItem,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -93,26 +89,8 @@ pub(crate) fn build_windows_window_icon() -> Option<tauri::image::Image<'static>
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MainWindowCloseBehavior {
-    HideToTray,
-    CloseWindow,
-}
-
-fn main_window_close_behavior(lightweight_mode: bool) -> MainWindowCloseBehavior {
-    if lightweight_mode {
-        MainWindowCloseBehavior::CloseWindow
-    } else {
-        MainWindowCloseBehavior::HideToTray
-    }
-}
-
-fn effective_dock_visibility(
-    hide_dock_icon: bool,
-    lightweight_mode: bool,
-    has_main_window: bool,
-) -> bool {
-    !hide_dock_icon && (!lightweight_mode || has_main_window)
+fn effective_dock_visibility(hide_dock_icon: bool, has_main_window: bool) -> bool {
+    !hide_dock_icon && has_main_window
 }
 
 pub(crate) fn sync_effective_dock_visibility(app: &AppHandle) {
@@ -120,12 +98,12 @@ pub(crate) fn sync_effective_dock_visibility(app: &AppHandle) {
         return;
     };
 
-    let (hide_dock_icon, lightweight_mode) = {
+    let hide_dock_icon = {
         let state = state.lock().unwrap_or_else(|e| e.into_inner());
-        (state.config.hide_dock_icon, state.config.lightweight_mode)
+        state.config.hide_dock_icon
     };
     let has_main_window = app.get_webview_window(MAIN_WINDOW_LABEL).is_some();
-    let visible = effective_dock_visibility(hide_dock_icon, lightweight_mode, has_main_window);
+    let visible = effective_dock_visibility(hide_dock_icon, has_main_window);
     commands::apply_dock_visibility(visible, false);
 }
 
@@ -261,19 +239,14 @@ pub(crate) fn refresh_tray_menu(app: &AppHandle) {
         return;
     };
 
-    let (is_recording, is_paused, lightweight_mode) = {
+    let (is_recording, is_paused) = {
         let state = state.lock().unwrap_or_else(|e| e.into_inner());
-        (
-            state.is_recording,
-            state.is_paused,
-            state.config.lightweight_mode,
-        )
+        (state.is_recording, state.is_paused)
     };
 
     let _ = tray_menu
         .recording_toggle
         .set_text(tray_recording_toggle_label(is_recording, is_paused));
-    let _ = tray_menu.lightweight_mode.set_checked(lightweight_mode);
 }
 
 pub(crate) fn emit_recording_state_changed(app: &AppHandle) {
@@ -337,6 +310,7 @@ pub struct AppState {
     pub screenshot_service: ScreenshotService,
     pub storage_manager: StorageManager,
     pub data_dir: PathBuf,
+    pub db_path: PathBuf,
     pub config_path: PathBuf,
     pub is_recording: bool,
     pub is_paused: bool,
@@ -586,6 +560,16 @@ fn resolve_data_dir() -> PathBuf {
             fallback_dir
         }
     }
+}
+
+fn resolve_database_path(data_dir: &Path, config: &AppConfig) -> PathBuf {
+    config
+        .database_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| data_dir.join("workreview.db"))
 }
 
 fn migrate_legacy_data_dir(target_dir: &PathBuf) {
@@ -1492,7 +1476,10 @@ async fn background_screenshot_task(state: Arc<Mutex<AppState>>, app: AppHandle)
                     let latest = latest_activity.unwrap();
                     let latest_id = match latest.id {
                         Some(id) => id,
-                        None => { log::error!("合并活动记录缺少 id，跳过"); continue; }
+                        None => {
+                            log::error!("合并活动记录缺少 id，跳过");
+                            continue;
+                        }
                     };
                     let previous_screenshot_path = latest.screenshot_path.clone();
 
@@ -2204,10 +2191,37 @@ fn get_platform() -> &'static str {
     return "unknown";
 }
 
+#[cfg(windows)]
+fn configure_windows_webview_low_power_mode() {
+    const LOW_POWER_ARGS: &[&str] = &[
+        "--disable-gpu",
+        "--disable-gpu-compositing",
+        "--disable-gpu-rasterization",
+        "--disable-accelerated-2d-canvas",
+    ];
+
+    let existing = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").unwrap_or_default();
+    let mut args = existing
+        .split_whitespace()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+
+    for arg in LOW_POWER_ARGS {
+        if !args.iter().any(|existing_arg| existing_arg == arg) {
+            args.push((*arg).to_string());
+        }
+    }
+
+    std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", args.join(" "));
+}
+
 #[tokio::main]
 async fn main() {
     // 初始化日志
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
+    #[cfg(windows)]
+    configure_windows_webview_low_power_mode();
 
     // Linux: 修复 sudo 下丢失的 Wayland/DBus 环境变量
     #[cfg(target_os = "linux")]
@@ -2226,6 +2240,7 @@ async fn main() {
         log::warn!("加载配置失败，使用默认配置: {e}");
         AppConfig::default()
     });
+    config.lightweight_mode = true;
 
     // 迁移旧版 excluded_apps → app_rules
     if config.privacy.migrate_legacy_excluded_apps() {
@@ -2236,7 +2251,7 @@ async fn main() {
     }
 
     // 初始化数据库
-    let db_path = data_dir.join("workreview.db");
+    let db_path = resolve_database_path(&data_dir, &config);
     let database = Database::new(&db_path).expect("初始化数据库失败");
 
     // 首次启动或升级后重建 FTS 索引，确保历史数据可被全文检索
@@ -2284,7 +2299,6 @@ async fn main() {
         } else {
             log::info!("✅ 辅助功能权限已授权");
         }
-
     }
 
     // 初始化存储管理器
@@ -2303,6 +2317,7 @@ async fn main() {
         screenshot_service,
         storage_manager,
         data_dir,
+        db_path,
         config_path,
         is_recording: true,
         is_paused: false,
@@ -2343,20 +2358,8 @@ async fn main() {
                 return;
             }
 
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let lightweight_mode = window
-                    .try_state::<Arc<Mutex<AppState>>>()
-                    .and_then(|state| state.lock().ok().map(|guard| guard.config.lightweight_mode))
-                    .unwrap_or(false);
-
-                if main_window_close_behavior(lightweight_mode)
-                    == MainWindowCloseBehavior::HideToTray
-                {
-                    let _ = window.hide();
-                    api.prevent_close();
-                } else if let Some(lifecycle_state) =
-                    window.try_state::<Arc<Mutex<AppLifecycleState>>>()
-                {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let Some(lifecycle_state) = window.try_state::<Arc<Mutex<AppLifecycleState>>>() {
                     let mut lifecycle_state =
                         lifecycle_state.lock().unwrap_or_else(|e| e.into_inner());
                     lifecycle_state.suppress_next_exit = true;
@@ -2370,7 +2373,9 @@ async fn main() {
                 log::warn!("初始化开机自启功能失败: {e}");
             }
 
-            let window = app.get_webview_window("main").expect("main window should exist at setup");
+            let window = app
+                .get_webview_window("main")
+                .expect("main window should exist at setup");
             configure_main_window(&window);
             let launch_args = std::env::args().collect::<Vec<_>>();
             // 获取 Arc<Mutex<AppState>> 并克隆以便在异步任务中使用
@@ -2414,24 +2419,18 @@ async fn main() {
                 tray_recording_toggle_label(true, false),
             )
             .build(app)?;
-            let lightweight_mode =
-                CheckMenuItemBuilder::with_id(TRAY_MENU_LIGHTWEIGHT_MODE_ID, "轻量模式")
-                    .checked(false)
-                    .build(app)?;
             let quit = MenuItemBuilder::with_id(TRAY_MENU_QUIT_ID, "退出").build(app)?;
 
             let menu = MenuBuilder::new(app)
                 .item(&show)
                 .separator()
                 .item(&recording_toggle)
-                .item(&lightweight_mode)
                 .separator()
                 .item(&quit)
                 .build()?;
 
             app.manage(TrayMenuState {
                 recording_toggle: recording_toggle.clone(),
-                lightweight_mode: lightweight_mode.clone(),
             });
             refresh_tray_menu(&app.handle());
 
@@ -2481,21 +2480,6 @@ async fn main() {
                             }
                         }
                         emit_recording_state_changed(&app);
-                    }
-                    TRAY_MENU_LIGHTWEIGHT_MODE_ID => {
-                        let next_config = {
-                            let state = state_for_tray.lock().unwrap_or_else(|e| e.into_inner());
-                            let mut config = state.config.clone();
-                            config.lightweight_mode = !config.lightweight_mode;
-                            config
-                        };
-
-                        if let Err(e) =
-                            commands::persist_app_config(next_config, app.clone(), &state_for_tray)
-                        {
-                            log::warn!("从托盘切换轻量模式失败: {e}");
-                            refresh_tray_menu(&app);
-                        }
                     }
                     _ => {}
                 })
@@ -2580,10 +2564,12 @@ async fn main() {
             commands::resume_recording,
             commands::get_recording_state,
             commands::get_data_dir,
+            commands::get_database_path,
             commands::get_default_data_dir,
             commands::get_runtime_platform,
             commands::get_linux_session_support,
             commands::change_data_dir,
+            commands::change_database_path,
             commands::cleanup_old_data_dir,
             commands::open_data_dir,
             commands::get_screenshot_thumbnail,
@@ -2673,14 +2659,14 @@ async fn main() {
 mod tests {
     use super::{
         browser_change_capture_min_interval_ms, effective_dock_visibility,
-        launch_args_contain_autostart, main_window_close_behavior, monitoring_poll_interval_ms,
+        launch_args_contain_autostart, monitoring_poll_interval_ms,
         monitoring_poll_interval_ms_for_platform, previous_app_backfill_duration,
         recording_loop_decision, resolve_activity_classification, reusable_cached_active_window,
         screen_lock_check_interval_ms_for_platform, should_confirm_idle,
         should_hide_main_window_on_setup, should_persist_merge_update, should_prevent_exit,
         should_probe_browser_url_before_change_detection, should_request_screen_capture_permission,
         should_skip_system_window, tray_recording_toggle_action, tray_recording_toggle_label,
-        MainWindowCloseBehavior, RecordingToggleAction,
+        RecordingToggleAction,
     };
     use crate::config::{AppConfig, WebsiteSemanticRule};
     use crate::monitor::ActiveWindow;
@@ -2894,27 +2880,10 @@ mod tests {
     }
 
     #[test]
-    fn 轻量模式关闭时主窗口关闭按钮应改为隐藏() {
-        assert_eq!(
-            main_window_close_behavior(false),
-            MainWindowCloseBehavior::HideToTray
-        );
-    }
-
-    #[test]
-    fn 轻量模式开启时主窗口关闭按钮应允许真正关闭() {
-        assert_eq!(
-            main_window_close_behavior(true),
-            MainWindowCloseBehavior::CloseWindow
-        );
-    }
-
-    #[test]
-    fn dock可见性应同时考虑用户偏好轻量模式与主窗口是否存在() {
-        assert!(!effective_dock_visibility(true, false, true));
-        assert!(effective_dock_visibility(false, false, true));
-        assert!(effective_dock_visibility(false, true, true));
-        assert!(!effective_dock_visibility(false, true, false));
+    fn dock可见性应考虑用户偏好与主窗口是否存在() {
+        assert!(!effective_dock_visibility(true, true));
+        assert!(effective_dock_visibility(false, true));
+        assert!(!effective_dock_visibility(false, false));
     }
 
     #[test]
@@ -3118,8 +3087,4 @@ mod tests {
         assert!(!should_request_screen_capture_permission(false, true));
         assert!(!should_request_screen_capture_permission(true, false));
     }
-
 }
-
-
-

@@ -34,6 +34,16 @@
     linear-gradient(180deg, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.82));
 }
 
+.lite-low-power,
+.lite-low-power *,
+.lite-low-power *::before,
+.lite-low-power *::after {
+  animation: none !important;
+  transition: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 /* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 8px;
@@ -117,6 +127,10 @@
   background: var(--editorial-shell-bg);
 }
 
+.lite-low-power.app-shell {
+  background: #0b0b0b;
+}
+
 .app-shell-stage {
   position: relative;
   align-items: stretch;
@@ -165,6 +179,60 @@
 .app-shell-windowbar {
   cursor: default;
   background: linear-gradient(180deg, #f4f7ff 0%, #eef2ff 100%);
+}
+
+.lite-low-power .app-shell-windowbar {
+  background: #1f1f1f;
+  border-bottom: 1px solid #454545;
+}
+
+.lite-low-power .app-shell-stage {
+  margin: 0;
+  padding: 1.75rem 0 0;
+}
+
+.lite-low-power .app-shell-sidebar-frame,
+.lite-low-power .app-shell-main-frame {
+  padding: 0;
+  border-radius: 0;
+  background: #050505;
+  border: 1px solid #3d3d3d;
+  box-shadow: none;
+}
+
+.lite-low-power .app-shell-sidebar,
+.lite-low-power .app-shell-main {
+  border-radius: 0;
+  background: #050505;
+}
+
+.lite-low-power .page-shell {
+  padding: 0.75rem;
+}
+
+.lite-low-power .card,
+.lite-low-power button,
+.lite-low-power input,
+.lite-low-power select,
+.lite-low-power textarea {
+  border-radius: 0.45rem !important;
+}
+
+.lite-low-power .card {
+  background: #0d0d0d;
+  border-color: #3d3d3d;
+  box-shadow: none;
+}
+
+.lite-low-power button {
+  box-shadow: none !important;
+}
+
+.lite-low-power .settings-save-dock {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .dark .app-shell-windowbar {

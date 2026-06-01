@@ -756,7 +756,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
-            ..Activity::default()
+                ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -799,7 +799,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
-            ..Activity::default()
+                ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -846,7 +846,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
-            ..Activity::default()
+                ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -894,7 +894,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
-            ..Activity::default()
+                ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -927,7 +927,7 @@ impl Database {
                 executable_path: row.get(9)?,
                 semantic_category: row.get(10)?,
                 semantic_confidence: row.get(11)?,
-            ..Activity::default()
+                ..Activity::default()
             }))
         } else {
             Ok(None)
@@ -1182,9 +1182,10 @@ impl Database {
 
     /// 删除指定日期之前的所有活动记录（使用时间戳范围查询以利用索引）
     pub fn delete_activities_before_date(&self, before_date: &str) -> Result<usize> {
-        let conn = self.conn.lock().map_err(|e| {
-            crate::error::AppError::Unknown(format!("数据库锁获取失败: {e}"))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| crate::error::AppError::Unknown(format!("数据库锁获取失败: {e}")))?;
         let date_parsed = chrono::NaiveDate::parse_from_str(before_date, "%Y-%m-%d")
             .map_err(|e| crate::error::AppError::Config(e.to_string()))?;
         let upper_ts = safe_local_timestamp(date_parsed.and_hms_opt(0, 0, 0).unwrap());
@@ -1858,10 +1859,7 @@ impl Database {
         for (hour, app_name, duration) in raw {
             if let Some(bucket) = buckets.get_mut(hour as usize) {
                 bucket.total_duration += duration;
-                bucket.apps.push(AppDuration {
-                    app_name,
-                    duration,
-                });
+                bucket.apps.push(AppDuration { app_name, duration });
             }
         }
 
@@ -1907,7 +1905,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
-                ..Activity::default()
+                    ..Activity::default()
                 })
             })?
             .filter_map(|row| row.ok())
@@ -2078,7 +2076,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
-                ..Activity::default()
+                    ..Activity::default()
                 })
             })?
             .filter_map(|r| r.ok())
@@ -2259,7 +2257,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
-                ..Activity::default()
+                    ..Activity::default()
                 })
             })?
             .filter_map(|row| row.ok())
@@ -2304,7 +2302,7 @@ impl Database {
                     executable_path: row.get(9)?,
                     semantic_category: row.get(10)?,
                     semantic_confidence: row.get(11)?,
-                ..Activity::default()
+                    ..Activity::default()
                 })
             })?
             .filter_map(|row| row.ok())
@@ -3176,7 +3174,10 @@ mod tests {
         assert_eq!(stats.browser_usage[0].domains[0].duration, 30 * 60);
         assert_eq!(stats.browser_usage[0].domains[1].domain, "example.com");
         assert_eq!(stats.browser_usage[0].domains[1].duration, 5 * 60);
-        assert_eq!(stats.browser_usage[0].domains[0].urls[0].url, "linux.dolatest");
+        assert_eq!(
+            stats.browser_usage[0].domains[0].urls[0].url,
+            "linux.dolatest"
+        );
         assert!(stats
             .browser_usage
             .iter()
@@ -3879,5 +3880,3 @@ mod tests {
         let _ = std::fs::remove_file(backup_path);
     }
 }
-
-

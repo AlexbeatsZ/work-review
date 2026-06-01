@@ -575,7 +575,11 @@ mod tests {
 
     #[test]
     fn 应将附加提示词追加到基础提示词末尾() {
-        let prompt = append_custom_prompt_for_locale("基础提示".to_string(), "输出偏正式一些", AppLocale::ZhCn);
+        let prompt = append_custom_prompt_for_locale(
+            "基础提示".to_string(),
+            "输出偏正式一些",
+            AppLocale::ZhCn,
+        );
 
         assert!(prompt.contains("基础提示"));
         assert!(prompt.contains("额外要求"));

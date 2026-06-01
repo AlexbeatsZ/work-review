@@ -197,7 +197,9 @@ pub fn normalize_display_app_name(app_name: &str) -> String {
         "wpp" => "WPS Presentation".to_string(),
         "wpspdf" => "WPS PDF".to_string(),
         // ── 终端 ──
-        "windowsterminal" | "windows terminal" | "windowsterminal.exe" => "Windows Terminal".to_string(),
+        "windowsterminal" | "windows terminal" | "windowsterminal.exe" => {
+            "Windows Terminal".to_string()
+        }
         "powershell" | "pwsh" => "PowerShell".to_string(),
         "cmd" => "Command Prompt".to_string(),
         "iterm2" | "iterm" => "iTerm2".to_string(),
@@ -236,7 +238,9 @@ pub fn normalize_display_app_name(app_name: &str) -> String {
         "canva" => "Canva".to_string(),
         // ── 音乐 / 视频 ──
         "spotify" => "Spotify".to_string(),
-        "netease_cloudmusic" | "cloudmusic" | "网易云音乐" => "NetEase Cloud Music".to_string(),
+        "netease_cloudmusic" | "cloudmusic" | "网易云音乐" => {
+            "NetEase Cloud Music".to_string()
+        }
         "qqmusic" | "qqmusicuniversal" | "qq音乐" => "QQ Music".to_string(),
         "kugou" | "酷狗音乐" => "KuGou Music".to_string(),
         "kuwo" | "酷我音乐" => "KuWo Music".to_string(),
@@ -799,10 +803,11 @@ pub fn find_category_override(
     rules.iter().find_map(|rule| {
         let normalized_rule = normalized_app_rule_key(&rule.app_name);
         let exact = normalized_app_name == normalized_rule;
-        let app_contains_rule = normalized_rule.len() >= 3 && normalized_app_name.contains(&normalized_rule);
-        let rule_contains_app = normalized_app_name.len() >= 3 && normalized_rule.contains(&normalized_app_name);
-        if exact || app_contains_rule || rule_contains_app
-        {
+        let app_contains_rule =
+            normalized_rule.len() >= 3 && normalized_app_name.contains(&normalized_rule);
+        let rule_contains_app =
+            normalized_app_name.len() >= 3 && normalized_rule.contains(&normalized_app_name);
+        if exact || app_contains_rule || rule_contains_app {
             Some(crate::config::normalize_category_key_private(
                 &rule.category,
                 &custom_keys,
