@@ -11,5 +11,6 @@ class WorkReviewApp : Application() {
         repository = WorkReviewRepository(this)
         repository.schedulePeriodicCollection()
         repository.scheduleAutoExport()
+        repository.scheduleNextTimedAutoExport()
     }
 }

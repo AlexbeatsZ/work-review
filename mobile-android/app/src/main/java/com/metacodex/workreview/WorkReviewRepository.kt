@@ -2,6 +2,7 @@ package com.metacodex.workreview
 
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.metacodex.workreview.data.browser.PrivacyFilter
@@ -16,7 +17,9 @@ import com.metacodex.workreview.data.usage.UsageStatsCollector
 import com.metacodex.workreview.permissions.UsageAccess
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 class WorkReviewRepository(private val context: Context) {
@@ -41,7 +44,8 @@ class WorkReviewRepository(private val context: Context) {
         val collector = UsageStatsCollector(
             context = context,
             minSessionMs = minSessionMs(),
-            mergeGapMs = mergeGapMs()
+            mergeGapMs = mergeGapMs(),
+            ignoredPackages = ignoredPackages()
         )
         val result = collector.collect(start, now)
         dao.insertAppEvents(result.events)
@@ -58,7 +62,8 @@ class WorkReviewRepository(private val context: Context) {
         val collector = UsageStatsCollector(
             context = context,
             minSessionMs = minSessionMs(),
-            mergeGapMs = mergeGapMs()
+            mergeGapMs = mergeGapMs(),
+            ignoredPackages = ignoredPackages()
         )
         val result = collector.collect(start, end)
         dao.insertAppEvents(result.events)
@@ -147,6 +152,20 @@ class WorkReviewRepository(private val context: Context) {
     private suspend fun mergeGapMs(): Long =
         (dao.getPreference(KEY_MERGE_GAP_SECONDS)?.toIntOrNull() ?: 15) * 1000L
 
+    suspend fun setIgnoredPackages(value: String) {
+        dao.putPreference(UserPreferenceEntity(KEY_IGNORED_PACKAGES, value))
+    }
+
+    suspend fun ignoredPackagesText(): String =
+        dao.getPreference(KEY_IGNORED_PACKAGES) ?: ""
+
+    private suspend fun ignoredPackages(): Set<String> =
+        ignoredPackagesText()
+            .split(',', '\n', ';')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .toSet()
+
     fun schedulePeriodicCollection() {
         val request = PeriodicWorkRequestBuilder<UsageCollectionWorker>(15, TimeUnit.MINUTES)
             .build()
@@ -167,12 +186,51 @@ class WorkReviewRepository(private val context: Context) {
         )
     }
 
+    fun scheduleNextTimedAutoExport() {
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "timed-auto-export",
+            ExistingWorkPolicy.REPLACE,
+            androidx.work.OneTimeWorkRequestBuilder<AutoExportWorker>()
+                .setInitialDelay(nextExportDelayMs(), TimeUnit.MILLISECONDS)
+                .build()
+        )
+    }
+
     suspend fun setAutoExportEnabled(enabled: Boolean) {
         dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_ENABLED, enabled.toString()))
+        if (enabled) scheduleNextTimedAutoExport()
     }
 
     suspend fun autoExportEnabled(): Boolean =
         dao.getPreference(KEY_AUTO_EXPORT_ENABLED)?.toBooleanStrictOrNull() ?: true
+
+    suspend fun setAutoExportTime(value: String) {
+        val normalized = normalizeExportTime(value)
+        dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_TIME, normalized))
+        scheduleNextTimedAutoExport()
+    }
+
+    suspend fun autoExportTime(): String =
+        dao.getPreference(KEY_AUTO_EXPORT_TIME) ?: "11:30"
+
+    private fun nextExportDelayMs(): Long {
+        val timeText = runCatching {
+            kotlinx.coroutines.runBlocking { autoExportTime() }
+        }.getOrDefault("11:30")
+        val target = runCatching { LocalTime.parse(normalizeExportTime(timeText)) }
+            .getOrDefault(LocalTime.of(11, 30))
+        val now = ZonedDateTime.now(zone)
+        var next = now.toLocalDate().atTime(target).atZone(zone)
+        if (!next.isAfter(now)) next = next.plusDays(1)
+        return java.time.Duration.between(now, next).toMillis().coerceAtLeast(60_000)
+    }
+
+    private fun normalizeExportTime(value: String): String {
+        val parts = value.trim().split(':')
+        val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 11
+        val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 30
+        return "%02d:%02d".format(hour, minute)
+    }
 
     private suspend fun findViaSessionFor(ts: Long): AppSessionEntity? =
         dao.viaSessionAt(ts)
@@ -218,5 +276,7 @@ class WorkReviewRepository(private val context: Context) {
         private const val KEY_MIN_SESSION_SECONDS = "min_session_seconds"
         private const val KEY_MERGE_GAP_SECONDS = "merge_gap_seconds"
         private const val KEY_AUTO_EXPORT_ENABLED = "auto_export_enabled"
+        private const val KEY_AUTO_EXPORT_TIME = "auto_export_time"
+        private const val KEY_IGNORED_PACKAGES = "ignored_packages"
     }
 }

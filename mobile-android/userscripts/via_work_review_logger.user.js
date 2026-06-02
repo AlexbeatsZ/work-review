@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  const endpoint = "http://127.0.0.1:17890/log";
+  const endpoints = ["http://127.0.0.1:17890/log", "http://localhost:17890/log"];
   const cacheKey = "work_review_via_logger_queue_v1";
   const dedupeWindowMs = 800;
   let currentUrl = location.href;
@@ -70,21 +70,38 @@
     let sent = false;
     try {
       if (navigator.sendBeacon) {
-        sent = navigator.sendBeacon(endpoint, new Blob([body], { type: "application/json" }));
+        sent = endpoints.some(function (endpoint) {
+          return navigator.sendBeacon(endpoint, new Blob([body], { type: "text/plain" }));
+        });
       }
     } catch (_) {
       sent = false;
     }
     if (sent) return;
 
-    fetch(endpoint, {
+    fetch(endpoints[0], {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
       body,
       keepalive: true
     }).catch(function () {
-      enqueue(item);
+      imageFallback(body, item);
     });
+  }
+
+  function imageFallback(body, item) {
+    try {
+      const encoded = btoa(unescape(encodeURIComponent(body)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+      const img = new Image();
+      img.onerror = function () { enqueue(item); };
+      img.src = endpoints[0].replace("/log", "/log.gif") + "?d=" + encodeURIComponent(encoded) + "&t=" + Date.now();
+    } catch (_) {
+      enqueue(item);
+    }
   }
 
   function flushQueue() {

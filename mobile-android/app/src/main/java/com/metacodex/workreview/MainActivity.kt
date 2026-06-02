@@ -22,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -213,7 +214,10 @@ private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
         }
     }
     Section("Via URL 记录") {
-        val viaEvents = browserEvents.takeLast(12)
+        val viaEvents = browserEvents
+            .filter { it.viaSessionId == null }
+            .sortedByDescending { it.ts }
+            .take(12)
         if (viaEvents.isEmpty()) EmptyText()
         viaEvents.forEach { BrowserEventRow(it, onDelete = null) }
     }
@@ -226,20 +230,23 @@ private fun TimelineScreen(repository: WorkReviewRepository, date: LocalDate) {
     val scope = rememberCoroutineScope()
     Section("App 时间线") {
         if (sessions.isEmpty()) EmptyText()
-        sessions.forEach { session ->
+        sessions.sortedByDescending { it.startTs }.forEach { session ->
             SessionRow(
                 session = session,
                 browserEvents = browserEvents.filter {
                     it.viaSessionId == session.id ||
                         (session.packageName == "mark.via.gp" && it.ts in session.startTs..session.endTs)
-                },
+                }.sortedByDescending { it.ts },
                 onDelete = { scope.launch { repository.deleteAppSession(session.id) } }
             )
         }
     }
-    Section("URL 时间线") {
-        if (browserEvents.isEmpty()) EmptyText()
-        browserEvents.forEach { event ->
+    Section("未匹配 Via URL") {
+        val orphanEvents = browserEvents
+            .filter { it.viaSessionId == null }
+            .sortedByDescending { it.ts }
+        if (orphanEvents.isEmpty()) EmptyText()
+        orphanEvents.forEach { event ->
             BrowserEventRow(
                 event = event,
                 onDelete = { scope.launch { repository.deleteBrowserEvent(event.id) } }
@@ -259,9 +266,13 @@ private fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var minSessionSeconds by remember { mutableStateOf(60) }
     var autoExportEnabled by remember { mutableStateOf(true) }
+    var autoExportTime by remember { mutableStateOf("11:30") }
+    var ignoredPackages by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         minSessionSeconds = repository.minSessionSeconds()
         autoExportEnabled = repository.autoExportEnabled()
+        autoExportTime = repository.autoExportTime()
+        ignoredPackages = repository.ignoredPackagesText()
     }
     Section("本地接收服务") {
         Text("状态：${if (serverRunning) "运行中" else "已关闭"}")
@@ -270,6 +281,26 @@ private fun SettingsScreen(
         }
     }
     Section("隐私与清理") {
+        OutlinedTextField(
+            value = ignoredPackages,
+            onValueChange = { ignoredPackages = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("屏蔽程序包名") },
+            supportingText = { Text("一行一个或用逗号分隔，例如 com.tencent.mobileqq、md.obsidian。保存后重新整理当天记录生效。") },
+            minLines = 3
+        )
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                scope.launch {
+                    repository.setIgnoredPackages(ignoredPackages)
+                    repository.recollectUsageForDate(LocalDate.now())
+                    onStatus("已保存屏蔽列表并重新整理今天")
+                }
+            }
+        ) {
+            Text("保存屏蔽列表")
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { scope.launch { repository.clearAppUsage(); onStatus("已清空 app 使用记录") } }) { Text("清空 app 记录") }
             Button(onClick = { scope.launch { repository.clearBrowserEvents(); onStatus("已清空浏览记录") } }) { Text("清空浏览记录") }
@@ -310,7 +341,7 @@ private fun SettingsScreen(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("自动导出 SQLite/CSV", fontWeight = FontWeight.SemiBold)
-                Text("默认每 6 小时导出一次，位置在应用外部文件目录。", style = MaterialTheme.typography.bodySmall)
+                Text("可每天在指定时间导出；位置在应用外部文件目录。", style = MaterialTheme.typography.bodySmall)
             }
             Switch(
                 checked = autoExportEnabled,
@@ -322,6 +353,26 @@ private fun SettingsScreen(
                     }
                 }
             )
+        }
+        OutlinedTextField(
+            value = autoExportTime,
+            onValueChange = { autoExportTime = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("每天导出时间") },
+            supportingText = { Text("格式 HH:mm，例如 11:30") },
+            singleLine = true
+        )
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                scope.launch {
+                    repository.setAutoExportTime(autoExportTime)
+                    autoExportTime = repository.autoExportTime()
+                    onStatus("已设置每天 $autoExportTime 自动导出")
+                }
+            }
+        ) {
+            Text("保存导出时间")
         }
         Button(onClick = {
             scope.launch {

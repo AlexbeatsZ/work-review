@@ -1,11 +1,14 @@
 package com.metacodex.workreview.server
 
+import android.util.Base64
 import com.metacodex.workreview.WorkReviewRepository
 import com.metacodex.workreview.data.browser.BrowserLogParser
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 class BrowserLogServer(
     private val repository: WorkReviewRepository,
@@ -18,6 +21,20 @@ class BrowserLogServer(
         if (session.method == Method.OPTIONS) {
             return cors(newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", ""))
         }
+        if (session.method == Method.GET && (session.uri == "/log" || session.uri == "/log.gif")) {
+            val encoded = session.parameters["d"]?.firstOrNull()
+                ?: return cors(newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "missing d"))
+            val body = runCatching {
+                String(
+                    Base64.decode(URLDecoder.decode(encoded, StandardCharsets.UTF_8.name()), Base64.URL_SAFE or Base64.NO_WRAP),
+                    StandardCharsets.UTF_8
+                )
+            }.getOrElse {
+                return cors(newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "bad payload"))
+            }
+            return handleBody(body)
+        }
+
         if (session.method != Method.POST || session.uri != "/log") {
             return cors(newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "not found"))
         }
@@ -26,15 +43,19 @@ class BrowserLogServer(
         return runCatching {
             session.parseBody(files)
             val body = files["postData"] ?: ""
-            val parsed = parser.parse(body)
-            val event = parsed.event ?: return cors(
-                newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json", """{"ok":false,"error":"${parsed.error}"}""")
-            )
-            scope.launch { repository.insertBrowserEvent(event) }
-            cors(newFixedLengthResponse(Response.Status.OK, "application/json", """{"ok":true}"""))
+            handleBody(body)
         }.getOrElse {
             cors(newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", """{"ok":false,"error":"server error"}"""))
         }
+    }
+
+    private fun handleBody(body: String): Response {
+        val parsed = parser.parse(body)
+        val event = parsed.event ?: return cors(
+            newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json", """{"ok":false,"error":"${parsed.error}"}""")
+        )
+        scope.launch { repository.insertBrowserEvent(event) }
+        return cors(newFixedLengthResponse(Response.Status.OK, "application/json", """{"ok":true}"""))
     }
 
     private fun cors(response: Response): Response =

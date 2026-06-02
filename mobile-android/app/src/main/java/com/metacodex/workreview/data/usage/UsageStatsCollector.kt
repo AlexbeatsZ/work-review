@@ -13,9 +13,11 @@ class UsageStatsCollector(
     private val context: Context,
     private val minSessionMs: Long = 60_000L,
     private val mergeGapMs: Long = 15_000L,
+    private val ignoredPackages: Set<String> = emptySet(),
     private val sessionizer: UsageSessionizer = UsageSessionizer(
         minSessionMs = minSessionMs,
-        mergeGapMs = mergeGapMs
+        mergeGapMs = mergeGapMs,
+        ignoredPackages = ignoredPackages
     )
 ) {
     private val usageStatsManager =
@@ -33,7 +35,7 @@ class UsageStatsCollector(
                     className = it.className,
                     eventType = it.eventType
                 )
-            },
+            }.filterNot { ignoredPackages.contains(it.packageName) },
             sessions = sessions.map {
                 val appName = it.appLabel ?: it.packageName
                 val classification = AutoTagger.classifyApp(appName, it.packageName)
