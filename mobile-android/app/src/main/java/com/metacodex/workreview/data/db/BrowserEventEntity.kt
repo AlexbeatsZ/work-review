@@ -17,5 +17,9 @@ data class BrowserEventEntity(
     val referrer: String?,
     val eventType: String,
     val durationMs: Long?,
-    val source: String = "via_userscript"
+    val source: String = "via_userscript",
+    val viaSessionId: Long? = null,
+    val category: String = "browser",
+    val semanticCategory: String? = null,
+    val semanticConfidence: Int? = null
 )

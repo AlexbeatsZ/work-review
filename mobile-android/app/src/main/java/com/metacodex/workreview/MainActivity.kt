@@ -4,27 +4,34 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,8 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.metacodex.workreview.data.ExportWriter
 import com.metacodex.workreview.data.db.AppEventEntity
@@ -99,8 +108,8 @@ private fun WorkReviewMobileApp(
         hasUsageAccess = UsageAccess.hasUsageAccess(context)
     }
 
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
+    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Scaffold(
                 bottomBar = {
                     NavigationBar {
@@ -120,7 +129,7 @@ private fun WorkReviewMobileApp(
                         .padding(padding)
                         .padding(16.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Header(
                         selectedDate = selectedDate,
@@ -196,13 +205,17 @@ private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
     Section("今日 app 使用排行") {
         if (summary.isEmpty()) EmptyText()
         summary.forEachIndexed { index, row ->
-            Text("${index + 1}. ${row.appLabel ?: row.packageName}  ${formatDuration(row.totalDurationMs)}")
+            MetricCard(
+                title = "${index + 1}. ${displayAppName(row.appLabel, row.packageName)}",
+                subtitle = row.packageName,
+                value = formatDuration(row.totalDurationMs)
+            )
         }
     }
     Section("Via URL 记录") {
         val viaEvents = browserEvents.takeLast(12)
         if (viaEvents.isEmpty()) EmptyText()
-        viaEvents.forEach { Text("${formatTime(it.ts)} ${it.eventType} ${it.title ?: it.url}") }
+        viaEvents.forEach { BrowserEventRow(it, onDelete = null) }
     }
 }
 
@@ -210,13 +223,28 @@ private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
 private fun TimelineScreen(repository: WorkReviewRepository, date: LocalDate) {
     val sessions by repository.sessions(date).collectAsState(initial = emptyList())
     val browserEvents by repository.browserEvents(date).collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
     Section("App 时间线") {
         if (sessions.isEmpty()) EmptyText()
-        sessions.forEach { SessionRow(it) }
+        sessions.forEach { session ->
+            SessionRow(
+                session = session,
+                browserEvents = browserEvents.filter {
+                    it.viaSessionId == session.id ||
+                        (session.packageName == "mark.via.gp" && it.ts in session.startTs..session.endTs)
+                },
+                onDelete = { scope.launch { repository.deleteAppSession(session.id) } }
+            )
+        }
     }
     Section("URL 时间线") {
         if (browserEvents.isEmpty()) EmptyText()
-        browserEvents.forEach { BrowserEventRow(it) }
+        browserEvents.forEach { event ->
+            BrowserEventRow(
+                event = event,
+                onDelete = { scope.launch { repository.deleteBrowserEvent(event.id) } }
+            )
+        }
     }
 }
 
@@ -229,6 +257,12 @@ private fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var minSessionSeconds by remember { mutableStateOf(60) }
+    var autoExportEnabled by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        minSessionSeconds = repository.minSessionSeconds()
+        autoExportEnabled = repository.autoExportEnabled()
+    }
     Section("本地接收服务") {
         Text("状态：${if (serverRunning) "运行中" else "已关闭"}")
         Button(onClick = onToggleServer) {
@@ -241,7 +275,54 @@ private fun SettingsScreen(
             Button(onClick = { scope.launch { repository.clearBrowserEvents(); onStatus("已清空浏览记录") } }) { Text("清空浏览记录") }
         }
     }
+    Section("时间线切分") {
+        Text("最小显示/记录刻度：$minSessionSeconds 秒")
+        SingleChoiceSegmentedButtonRow {
+            listOf(15, 30, 60, 120).forEachIndexed { index, seconds ->
+                SegmentedButton(
+                    selected = minSessionSeconds == seconds,
+                    onClick = {
+                        minSessionSeconds = seconds
+                        scope.launch {
+                            repository.setMinSessionSeconds(seconds)
+                            onStatus("已设置最小刻度为 $seconds 秒，重新整理当天记录后生效")
+                        }
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(index, 4)
+                ) {
+                    Text("${seconds}s")
+                }
+            }
+        }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                scope.launch {
+                    repository.recollectUsageForDate(LocalDate.now())
+                    onStatus("已按当前最小刻度重新整理今天")
+                }
+            }
+        ) {
+            Text("重新整理今天的记录")
+        }
+    }
     Section("导出") {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("自动导出 SQLite/CSV", fontWeight = FontWeight.SemiBold)
+                Text("默认每 6 小时导出一次，位置在应用外部文件目录。", style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(
+                checked = autoExportEnabled,
+                onCheckedChange = {
+                    autoExportEnabled = it
+                    scope.launch {
+                        repository.setAutoExportEnabled(it)
+                        onStatus(if (it) "已开启自动导出" else "已关闭自动导出")
+                    }
+                }
+            )
+        }
         Button(onClick = {
             scope.launch {
                 val dir = ExportWriter(context).exportAll()
@@ -264,16 +345,20 @@ private fun DebugScreen(repository: WorkReviewRepository, hasUsageAccess: Boolea
         Text("Via 包名：mark.via.gp")
     }
     Section("最近 app_events") { appEvents.forEach { AppEventRow(it) } }
-    Section("最近 app_sessions") { appSessions.forEach { SessionRow(it) } }
-    Section("最近 browser_events") { browserEvents.forEach { BrowserEventRow(it) } }
+    Section("最近 app_sessions") { appSessions.forEach { SessionRow(it, browserEvents = emptyList(), onDelete = null) } }
+    Section("最近 browser_events") { browserEvents.forEach { BrowserEventRow(it, onDelete = null) } }
 }
 
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Divider()
+            HorizontalDivider()
             content()
         }
     }
@@ -282,25 +367,127 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
 @Composable private fun EmptyText() = Text("暂无数据")
 
 @Composable
-private fun SessionRow(session: AppSessionEntity) {
-    Text("${formatTime(session.startTs)}-${formatTime(session.endTs)} ${session.appLabel ?: session.packageName} ${formatDuration(session.durationMs)}")
+private fun MetricCard(title: String, subtitle: String, value: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
 }
 
 @Composable
-private fun BrowserEventRow(event: BrowserEventEntity) {
-    Text("${formatTime(event.ts)} ${event.eventType} ${event.title ?: event.url}")
+private fun SessionRow(session: AppSessionEntity, browserEvents: List<BrowserEventEntity>, onDelete: (() -> Unit)?) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(displayAppName(session.appLabel, session.packageName), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${formatTime(session.startTs)}-${formatTime(session.endTs)} · ${session.packageName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text("${session.category}${session.semanticCategory?.let { " · $it" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(formatDuration(session.durationMs), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    if (onDelete != null) TextButton(onClick = onDelete) { Text("删除") }
+                }
+            }
+            if (browserEvents.isNotEmpty()) {
+                HorizontalDivider()
+                browserEvents.take(6).forEach { event ->
+                    Text(
+                        "${formatTime(event.ts)} ${event.title?.takeIf { it.isNotBlank() } ?: event.url}",
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (browserEvents.size > 6) {
+                    Text("+${browserEvents.size - 6} 条 Via URL 记录", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowserEventRow(event: BrowserEventEntity, onDelete: (() -> Unit)?) {
+    RowCard(
+        title = event.title?.takeIf { it.isNotBlank() } ?: event.url,
+        subtitle = "${formatTime(event.ts)} · ${event.eventType}",
+        value = event.durationMs?.let { formatDuration(it) } ?: "",
+        onDelete = onDelete
+    )
 }
 
 @Composable
 private fun AppEventRow(event: AppEventEntity) {
-    Text("${formatTime(event.ts)} ${event.packageName} type=${event.eventType}")
+    Text("${formatTime(event.ts)} ${readablePackageName(event.packageName)} type=${event.eventType}")
+}
+
+@Composable
+private fun RowCard(title: String, subtitle: String, value: String, onDelete: (() -> Unit)?) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (value.isNotBlank()) Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                if (onDelete != null) {
+                    TextButton(onClick = onDelete) { Text("删除") }
+                }
+            }
+        }
+    }
 }
 
 private fun formatDuration(ms: Long): String {
-    val minutes = ms / 60_000
+    if (ms < 60_000) return "${(ms / 1000).coerceAtLeast(1)}s"
+    val minutes = (ms + 30_000) / 60_000
     val hours = minutes / 60
     val rem = minutes % 60
     return if (hours > 0) "${hours}h ${rem}m" else "${rem}m"
+}
+
+private fun displayAppName(appLabel: String?, packageName: String): String =
+    appLabel?.takeIf { it.isNotBlank() && it != packageName }
+        ?: readablePackageName(packageName)
+
+private fun readablePackageName(packageName: String): String {
+    val known = mapOf(
+        "com.tencent.mobileqq" to "QQ",
+        "com.tencent.mm" to "微信",
+        "md.obsidian" to "Obsidian",
+        "mark.via.gp" to "Via"
+    )
+    known[packageName]?.let { return it }
+    return packageName
+        .substringAfterLast('.')
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .split(' ')
+        .filter { it.isNotBlank() }
+        .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+        .ifBlank { packageName }
 }
 
 private fun formatTime(ms: Long): String =

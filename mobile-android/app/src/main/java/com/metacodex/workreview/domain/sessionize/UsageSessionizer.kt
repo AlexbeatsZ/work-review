@@ -7,6 +7,8 @@ import java.time.ZonedDateTime
 class UsageSessionizer(
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val maxSessionMs: Long = 12L * 60L * 60L * 1000L,
+    private val minSessionMs: Long = 60_000L,
+    private val mergeGapMs: Long = 15_000L,
     private val ignoredPackages: Set<String> = emptySet()
 ) {
     fun sessionize(
@@ -75,8 +77,36 @@ class UsageSessionizer(
         }
 
         close(rangeEnd, confidence = 0.6)
-        return sessions.sortedBy { it.startTs }
+        return mergeAdjacent(sessions)
+            .filter { it.durationMs >= minSessionMs }
+            .sortedBy { it.startTs }
     }
+
+    private fun mergeAdjacent(sessions: List<UsageSessionModel>): List<UsageSessionModel> {
+        val merged = mutableListOf<UsageSessionModel>()
+        sessions.sortedBy { it.startTs }.forEach { current ->
+            val previous = merged.lastOrNull()
+            if (
+                previous != null &&
+                previous.packageName == current.packageName &&
+                sameLocalDay(previous.startTs, current.startTs) &&
+                current.startTs - previous.endTs <= mergeGapMs
+            ) {
+                merged[merged.lastIndex] = previous.copy(
+                    endTs = current.endTs,
+                    durationMs = current.endTs - previous.startTs,
+                    confidence = minOf(previous.confidence, current.confidence)
+                )
+            } else {
+                merged += current
+            }
+        }
+        return merged
+    }
+
+    private fun sameLocalDay(leftTs: Long, rightTs: Long): Boolean =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(leftTs), zoneId).toLocalDate() ==
+            ZonedDateTime.ofInstant(Instant.ofEpochMilli(rightTs), zoneId).toLocalDate()
 
     private fun splitByDay(startTs: Long, endTs: Long): List<Pair<Long, Long>> {
         val parts = mutableListOf<Pair<Long, Long>>()

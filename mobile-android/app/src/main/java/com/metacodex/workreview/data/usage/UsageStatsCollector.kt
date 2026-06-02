@@ -5,12 +5,18 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import com.metacodex.workreview.data.db.AppEventEntity
 import com.metacodex.workreview.data.db.AppSessionEntity
+import com.metacodex.workreview.data.tagging.AutoTagger
 import com.metacodex.workreview.domain.sessionize.UsageEventModel
 import com.metacodex.workreview.domain.sessionize.UsageSessionizer
 
 class UsageStatsCollector(
     private val context: Context,
-    private val sessionizer: UsageSessionizer = UsageSessionizer()
+    private val minSessionMs: Long = 60_000L,
+    private val mergeGapMs: Long = 15_000L,
+    private val sessionizer: UsageSessionizer = UsageSessionizer(
+        minSessionMs = minSessionMs,
+        mergeGapMs = mergeGapMs
+    )
 ) {
     private val usageStatsManager =
         context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -29,6 +35,8 @@ class UsageStatsCollector(
                 )
             },
             sessions = sessions.map {
+                val appName = it.appLabel ?: it.packageName
+                val classification = AutoTagger.classifyApp(appName, it.packageName)
                 AppSessionEntity(
                     startTs = it.startTs,
                     endTs = it.endTs,
@@ -36,7 +44,10 @@ class UsageStatsCollector(
                     packageName = it.packageName,
                     appLabel = it.appLabel,
                     source = it.source,
-                    confidence = it.confidence
+                    confidence = it.confidence,
+                    category = classification.category,
+                    semanticCategory = classification.semanticCategory,
+                    semanticConfidence = classification.semanticConfidence
                 )
             }
         )

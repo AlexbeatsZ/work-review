@@ -15,7 +15,7 @@ class UsageSessionizerTest {
     @Test
     fun appSwitchClosesPreviousSession() {
         val base = LocalDate.of(2026, 6, 2).atStartOfDay(zone).toInstant().toEpochMilli()
-        val sessions = UsageSessionizer(zone).sessionize(
+        val sessions = UsageSessionizer(zone, minSessionMs = 0).sessionize(
             events = listOf(
                 UsageEventModel(base + 1_000, "a", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
                 UsageEventModel(base + 6_000, "b", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
@@ -36,7 +36,7 @@ class UsageSessionizerTest {
     fun splitsAcrossMidnight() {
         val start = LocalDate.of(2026, 6, 2).atTime(23, 59).atZone(zone).toInstant().toEpochMilli()
         val end = LocalDate.of(2026, 6, 3).atTime(0, 1).atZone(zone).toInstant().toEpochMilli()
-        val sessions = UsageSessionizer(zone).sessionize(
+        val sessions = UsageSessionizer(zone, minSessionMs = 0).sessionize(
             events = listOf(
                 UsageEventModel(start, "via", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
                 UsageEventModel(end, "via", null, UsageSessionizer.EVENT_ACTIVITY_PAUSED)
@@ -52,13 +52,28 @@ class UsageSessionizerTest {
     @Test
     fun ignoresZeroDurationSessions() {
         val base = LocalDate.of(2026, 6, 2).atStartOfDay(zone).toInstant().toEpochMilli()
-        val sessions = UsageSessionizer(zone).sessionize(
+        val sessions = UsageSessionizer(zone, minSessionMs = 0).sessionize(
             events = listOf(
                 UsageEventModel(base, "a", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
                 UsageEventModel(base, "a", null, UsageSessionizer.EVENT_ACTIVITY_PAUSED)
             ),
             rangeStart = base,
             rangeEnd = base + 1_000,
+            labelResolver = labels
+        )
+        assertTrue(sessions.isEmpty())
+    }
+
+    @Test
+    fun filtersSessionsBelowMinimumDuration() {
+        val base = LocalDate.of(2026, 6, 2).atStartOfDay(zone).toInstant().toEpochMilli()
+        val sessions = UsageSessionizer(zone, minSessionMs = 60_000).sessionize(
+            events = listOf(
+                UsageEventModel(base, "a", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
+                UsageEventModel(base + 10_000, "a", null, UsageSessionizer.EVENT_ACTIVITY_PAUSED)
+            ),
+            rangeStart = base,
+            rangeEnd = base + 20_000,
             labelResolver = labels
         )
         assertTrue(sessions.isEmpty())

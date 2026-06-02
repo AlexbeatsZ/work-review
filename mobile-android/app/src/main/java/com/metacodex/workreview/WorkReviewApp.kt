@@ -10,5 +10,6 @@ class WorkReviewApp : Application() {
         super.onCreate()
         repository = WorkReviewRepository(this)
         repository.schedulePeriodicCollection()
+        repository.scheduleAutoExport()
     }
 }

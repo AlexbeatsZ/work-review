@@ -16,5 +16,8 @@ data class AppSessionEntity(
     val packageName: String,
     val appLabel: String?,
     val source: String = "usage_stats",
-    val confidence: Double = 1.0
+    val confidence: Double = 1.0,
+    val category: String = "other",
+    val semanticCategory: String? = null,
+    val semanticConfidence: Int? = null
 )

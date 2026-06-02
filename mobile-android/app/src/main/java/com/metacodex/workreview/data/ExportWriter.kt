@@ -24,6 +24,34 @@ class ExportWriter(private val context: Context) {
                 }
             }
         )
+        File(dir, "activities.csv").writeText(
+            buildString {
+                appendLine("id,timestamp,app_name,window_title,screenshot_path,ocr_text,category,duration,browser_url,executable_path,semantic_category,semantic_confidence,intent_purpose,intent_note,intent_start_timestamp,intent_end_timestamp,intent_completed_at")
+                dao.allActivities().forEach {
+                    appendLine(
+                        listOf(
+                            it.id,
+                            it.timestamp,
+                            it.appName,
+                            it.windowTitle,
+                            it.screenshotPath,
+                            it.ocrText ?: "",
+                            it.category,
+                            it.duration,
+                            it.browserUrl ?: "",
+                            it.executablePath ?: "",
+                            it.semanticCategory ?: "",
+                            it.semanticConfidence ?: "",
+                            it.intentPurpose ?: "",
+                            it.intentNote ?: "",
+                            it.intentStartTimestamp ?: "",
+                            it.intentEndTimestamp ?: "",
+                            it.intentCompletedAt ?: ""
+                        ).toCsv()
+                    )
+                }
+            }
+        )
         context.getDatabasePath("work_review_mobile.db")
             .takeIf { it.exists() }
             ?.copyTo(File(dir, "work_review_mobile.db"), overwrite = true)
