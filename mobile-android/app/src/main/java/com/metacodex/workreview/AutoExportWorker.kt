@@ -13,7 +13,8 @@ class AutoExportWorker(
         runCatching {
             val repository = WorkReviewRepository(applicationContext)
             if (repository.autoExportEnabled()) {
-                ExportWriter(applicationContext).exportAll()
+                ExportWriter(applicationContext).exportAll(repository.exportDirectoryUri())
+                repository.setLastExportAt(System.currentTimeMillis())
                 repository.rescheduleTimedAutoExports()
             }
         }.fold(

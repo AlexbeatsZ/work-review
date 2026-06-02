@@ -1,8 +1,13 @@
 package com.metacodex.workreview
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -11,8 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,9 +32,9 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -41,7 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,9 +53,9 @@ import androidx.compose.ui.unit.dp
 import com.metacodex.workreview.data.ExportWriter
 import com.metacodex.workreview.data.db.AppEventEntity
 import com.metacodex.workreview.data.db.AppSessionEntity
-import com.metacodex.workreview.data.db.BrowserEventEntity
 import com.metacodex.workreview.data.usage.InstalledApp
 import com.metacodex.workreview.permissions.UsageAccess
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -64,15 +68,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = (application as WorkReviewApp).repository
-        setContent {
-            WorkReviewMobileApp(repository = repository)
-        }
+        setContent { WorkReviewMobileApp(repository) }
     }
 
     override fun onResume() {
         super.onResume()
         if (::repository.isInitialized) {
-            kotlinx.coroutines.MainScope().launch { repository.collectUsageNow() }
+            MainScope().launch { repository.collectUsageNow() }
         }
     }
 }
@@ -84,12 +86,19 @@ private fun WorkReviewMobileApp(repository: WorkReviewRepository) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var tab by remember { mutableStateOf("overview") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccess.hasUsageAccess(context)) }
-    var serverRunning by remember { mutableStateOf(repository.isBrowserLogServerRunning()) }
     var status by remember { mutableStateOf("") }
+    var lastCollectionAt by remember { mutableStateOf<Long?>(null) }
+    var lastExportAt by remember { mutableStateOf<Long?>(null) }
 
-    LaunchedEffect(Unit) {
-        repository.collectUsageNow()
+    suspend fun refreshStatus() {
         hasUsageAccess = UsageAccess.hasUsageAccess(context)
+        lastCollectionAt = repository.lastCollectionAt()
+        lastExportAt = repository.lastExportAt()
+    }
+
+    LaunchedEffect(selectedDate) {
+        repository.collectUsageNow()
+        refreshStatus()
     }
 
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
@@ -111,45 +120,39 @@ private fun WorkReviewMobileApp(repository: WorkReviewRepository) {
                 Column(
                     modifier = Modifier
                         .padding(padding)
-                        .padding(16.dp)
+                        .padding(14.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Header(
                         selectedDate = selectedDate,
+                        lastCollectionAt = lastCollectionAt,
                         onPrev = { selectedDate = selectedDate.minusDays(1) },
                         onToday = { selectedDate = LocalDate.now() },
-                        onNext = { selectedDate = selectedDate.plusDays(1) },
-                        onCollect = {
-                            scope.launch {
-                                repository.collectUsageNow()
-                                hasUsageAccess = UsageAccess.hasUsageAccess(context)
-                                status = "已补采到当前时间"
-                            }
-                        }
+                        onNext = { selectedDate = selectedDate.plusDays(1) }
                     )
                     if (!hasUsageAccess) {
                         PermissionCard { context.startActivity(UsageAccess.settingsIntent()) }
                     }
-                    if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.primary)
+                    if (status.isNotBlank()) {
+                        Text(status, color = MaterialTheme.colorScheme.primary)
+                    }
                     when (tab) {
                         "overview" -> OverviewScreen(repository, selectedDate)
                         "timeline" -> TimelineScreen(repository, selectedDate)
                         "settings" -> SettingsScreen(
                             repository = repository,
-                            serverRunning = serverRunning,
-                            onToggleServer = {
-                                if (serverRunning) {
-                                    repository.stopBrowserLogServer()
-                                    serverRunning = false
-                                } else {
-                                    serverRunning = repository.startBrowserLogServer()
-                                }
-                                scope.launch { repository.setLocalServerEnabled(serverRunning) }
-                            },
-                            onStatus = { status = it }
+                            lastExportAt = lastExportAt,
+                            onStatus = { status = it },
+                            onRefreshStatus = { scope.launch { refreshStatus() } }
                         )
-                        "debug" -> DebugScreen(repository, hasUsageAccess, serverRunning)
+                        "debug" -> DebugScreen(
+                            repository = repository,
+                            hasUsageAccess = hasUsageAccess,
+                            lastCollectionAt = lastCollectionAt,
+                            onStatus = { status = it },
+                            onRefreshStatus = { scope.launch { refreshStatus() } }
+                        )
                     }
                 }
             }
@@ -158,15 +161,21 @@ private fun WorkReviewMobileApp(repository: WorkReviewRepository) {
 }
 
 @Composable
-private fun Header(selectedDate: LocalDate, onPrev: () -> Unit, onToday: () -> Unit, onNext: () -> Unit, onCollect: () -> Unit) {
+private fun Header(
+    selectedDate: LocalDate,
+    lastCollectionAt: Long?,
+    onPrev: () -> Unit,
+    onToday: () -> Unit,
+    onNext: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Work Review Mobile", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Work Review Lite", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("最近采集：${lastCollectionAt?.let(::formatDateTime) ?: "尚未采集"}", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onPrev) { Text("前一天") }
             TextButton(onClick = onToday) { Text(selectedDate.toString()) }
             TextButton(onClick = onNext) { Text("后一天") }
         }
-        Button(onClick = onCollect, modifier = Modifier.fillMaxWidth()) { Text("立即补采使用记录") }
     }
 }
 
@@ -175,7 +184,7 @@ private fun PermissionCard(onOpenSettings: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("需要开启使用情况访问权限", fontWeight = FontWeight.Bold)
-            Text("授权后才能通过 UsageStatsManager 读取 app 使用事件。")
+            Text("开启后会自动补采 app 使用记录。")
             Button(onClick = onOpenSettings) { Text("打开系统 Usage Access 设置") }
         }
     }
@@ -184,7 +193,11 @@ private fun PermissionCard(onOpenSettings: () -> Unit) {
 @Composable
 private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
     val summary by repository.usageSummary(date).collectAsState(initial = emptyList())
-    Section("今日 app 使用排行") {
+    Section("今日概览") {
+        val total = summary.sumOf { it.totalDurationMs }
+        MetricCard("总使用时长", "按 UsageStats 自动汇总", formatDuration(total))
+    }
+    Section("App 使用排行") {
         if (summary.isEmpty()) EmptyText()
         summary.forEachIndexed { index, row ->
             MetricCard(
@@ -199,17 +212,12 @@ private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
 @Composable
 private fun TimelineScreen(repository: WorkReviewRepository, date: LocalDate) {
     val sessions by repository.sessions(date).collectAsState(initial = emptyList())
-    val browserEvents by repository.browserEvents(date).collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     Section("App 时间线") {
         if (sessions.isEmpty()) EmptyText()
         sessions.sortedByDescending { it.startTs }.forEach { session ->
             SessionRow(
                 session = session,
-                browserEvents = browserEvents.filter {
-                    it.viaSessionId == session.id ||
-                        (session.packageName == "mark.via.gp" && it.ts in session.startTs..session.endTs)
-                }.sortedByDescending { it.ts },
                 onDelete = { scope.launch { repository.deleteAppSession(session.id) } }
             )
         }
@@ -219,60 +227,45 @@ private fun TimelineScreen(repository: WorkReviewRepository, date: LocalDate) {
 @Composable
 private fun SettingsScreen(
     repository: WorkReviewRepository,
-    serverRunning: Boolean,
-    onToggleServer: () -> Unit,
-    onStatus: (String) -> Unit
+    lastExportAt: Long?,
+    onStatus: (String) -> Unit,
+    onRefreshStatus: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var minSessionSeconds by remember { mutableStateOf(60) }
     var autoExportEnabled by remember { mutableStateOf(true) }
     var autoExportTimes by remember { mutableStateOf("11:30") }
+    var exportDirectoryUri by remember { mutableStateOf<String?>(null) }
     var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
     var ignoredPackages by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var showIgnoreDialog by remember { mutableStateOf(false) }
+
+    val directoryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            scope.launch {
+                repository.setExportDirectoryUri(uri.toString())
+                exportDirectoryUri = repository.exportDirectoryUri()
+                onStatus("已设置导出目录")
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         minSessionSeconds = repository.minSessionSeconds()
         autoExportEnabled = repository.autoExportEnabled()
         autoExportTimes = repository.autoExportTimesText()
+        exportDirectoryUri = repository.exportDirectoryUri()
         installedApps = repository.installedApps()
         ignoredPackages = installedApps.filter { it.isIgnored }.map { it.packageName }.toSet()
     }
-    Section("本地接收服务") {
-        Text("状态：${if (serverRunning) "运行中" else "已关闭"}")
-        Text("健康检查：http://127.0.0.1:17890/health", style = MaterialTheme.typography.bodySmall)
-        Button(onClick = onToggleServer) {
-            Text(if (serverRunning) "关闭 127.0.0.1:17890/log" else "启动 127.0.0.1:17890/log")
-        }
-    }
-    Section("隐私与清理") {
-        Text("屏蔽程序", fontWeight = FontWeight.SemiBold)
-        installedApps.take(120).forEach { app ->
-            AppIgnoreRow(
-                app = app.copy(isIgnored = ignoredPackages.contains(app.packageName)),
-                onToggle = { checked ->
-                    ignoredPackages = if (checked) ignoredPackages + app.packageName else ignoredPackages - app.packageName
-                }
-            )
-        }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                scope.launch {
-                    repository.setIgnoredPackages(ignoredPackages)
-                    repository.recollectUsageForDate(LocalDate.now())
-                    installedApps = repository.installedApps()
-                    onStatus("已保存屏蔽列表并重新整理今天")
-                }
-            }
-        ) {
-            Text("保存屏蔽列表")
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { scope.launch { repository.clearAppUsage(); onStatus("已清空 app 使用记录") } }) { Text("清空 app 记录") }
-            Button(onClick = { scope.launch { repository.clearBrowserEvents(); onStatus("已清空浏览记录") } }) { Text("清空浏览记录") }
-        }
-    }
-    Section("时间线切分") {
+
+    Section("采集") {
+        Text("已启用自动采集：app 启动、切回前台和后台定时任务都会补采。")
         Text("最小显示/记录刻度：$minSessionSeconds 秒")
         SingleChoiceSegmentedButtonRow {
             listOf(15, 30, 60, 120).forEachIndexed { index, seconds ->
@@ -282,7 +275,8 @@ private fun SettingsScreen(
                         minSessionSeconds = seconds
                         scope.launch {
                             repository.setMinSessionSeconds(seconds)
-                            onStatus("已设置最小刻度为 $seconds 秒，重新整理当天记录后生效")
+                            repository.recollectUsageForDate(LocalDate.now())
+                            onStatus("已按 $seconds 秒刻度重新整理今天")
                         }
                     },
                     shape = SegmentedButtonDefaults.itemShape(index, 4)
@@ -291,23 +285,20 @@ private fun SettingsScreen(
                 }
             }
         }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                scope.launch {
-                    repository.recollectUsageForDate(LocalDate.now())
-                    onStatus("已按当前最小刻度重新整理今天")
-                }
-            }
-        ) {
-            Text("重新整理今天的记录")
+    }
+
+    Section("屏蔽程序") {
+        Text("已屏蔽 ${ignoredPackages.size} 个程序")
+        Button(onClick = { showIgnoreDialog = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("管理屏蔽列表")
         }
     }
+
     Section("导出") {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("自动导出 SQLite/CSV", fontWeight = FontWeight.SemiBold)
-                Text("可每天在指定时间导出；位置在应用外部文件目录。", style = MaterialTheme.typography.bodySmall)
+                Text("最近导出：${lastExportAt?.let(::formatDateTime) ?: "尚未导出"}", style = MaterialTheme.typography.bodySmall)
             }
             Switch(
                 checked = autoExportEnabled,
@@ -319,6 +310,10 @@ private fun SettingsScreen(
                     }
                 }
             )
+        }
+        Text("导出目录：${exportDirectoryUri ?: "未选择，使用应用默认目录"}", style = MaterialTheme.typography.bodySmall)
+        Button(onClick = { directoryLauncher.launch(null) }, modifier = Modifier.fillMaxWidth()) {
+            Text("选择导出目录")
         }
         OutlinedTextField(
             value = autoExportTimes,
@@ -334,36 +329,122 @@ private fun SettingsScreen(
                 scope.launch {
                     repository.setAutoExportTimes(autoExportTimes)
                     autoExportTimes = repository.autoExportTimesText()
-                    onStatus("已设置多个自动导出时间")
+                    onStatus("已保存自动导出时间")
                 }
             }
-        ) {
-            Text("保存导出时间")
-        }
-        Button(onClick = {
-            scope.launch {
-                val dir = ExportWriter(context).exportAll()
-                onStatus("已导出到 ${dir.absolutePath}")
+        ) { Text("保存导出时间") }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                scope.launch {
+                    val result = ExportWriter(context).exportAll(repository.exportDirectoryUri())
+                    repository.setLastExportAt(System.currentTimeMillis())
+                    onRefreshStatus()
+                    onStatus("已导出到 ${result.destination}")
+                }
             }
-        }) {
-            Text("导出 SQLite 和 CSV")
+        ) { Text("立即导出") }
+    }
+
+    Section("数据清理") {
+        Button(onClick = { scope.launch { repository.clearAppUsage(); onStatus("已清空 app 使用记录") } }) {
+            Text("清空 app 记录")
         }
+    }
+
+    if (showIgnoreDialog) {
+        IgnoreAppsDialog(
+            apps = installedApps,
+            ignoredPackages = ignoredPackages,
+            onIgnoredPackagesChange = { ignoredPackages = it },
+            onDismiss = { showIgnoreDialog = false },
+            onSave = {
+                scope.launch {
+                    repository.setIgnoredPackages(ignoredPackages)
+                    repository.recollectUsageForDate(LocalDate.now())
+                    installedApps = repository.installedApps()
+                    showIgnoreDialog = false
+                    onStatus("已保存屏蔽列表并重新整理今天")
+                }
+            }
+        )
     }
 }
 
 @Composable
-private fun DebugScreen(repository: WorkReviewRepository, hasUsageAccess: Boolean, serverRunning: Boolean) {
+private fun IgnoreAppsDialog(
+    apps: List<InstalledApp>,
+    ignoredPackages: Set<String>,
+    onIgnoredPackagesChange: (Set<String>) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filtered = apps
+        .filter { query.isBlank() || it.label.contains(query, true) || it.packageName.contains(query, true) }
+        .sortedWith(compareBy<InstalledApp> { !ignoredPackages.contains(it.packageName) }.thenBy { it.label.lowercase() })
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("管理屏蔽列表") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("搜索应用") },
+                    singleLine = true
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    filtered.take(120).forEach { app ->
+                        AppIgnoreRow(
+                            app = app.copy(isIgnored = ignoredPackages.contains(app.packageName)),
+                            onToggle = { checked ->
+                                onIgnoredPackagesChange(
+                                    if (checked) ignoredPackages + app.packageName else ignoredPackages - app.packageName
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onSave) { Text("保存") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
+}
+
+@Composable
+private fun DebugScreen(
+    repository: WorkReviewRepository,
+    hasUsageAccess: Boolean,
+    lastCollectionAt: Long?,
+    onStatus: (String) -> Unit,
+    onRefreshStatus: () -> Unit
+) {
     val appEvents by repository.recentAppEvents().collectAsState(initial = emptyList())
     val appSessions by repository.recentAppSessions().collectAsState(initial = emptyList())
-    val browserEvents by repository.recentBrowserEvents().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
     Section("状态") {
         Text("Usage Access：${if (hasUsageAccess) "已开启" else "未开启"}")
-        Text("本地 HTTP 服务：${if (serverRunning) "运行中" else "已关闭"}")
-        Text("Via 包名：mark.via.gp")
+        Text("WorkManager：每 15 分钟补采一次，实际执行受 Android 后台策略影响")
+        Text("最近采集：${lastCollectionAt?.let(::formatDateTime) ?: "尚未采集"}")
+        Button(onClick = {
+            scope.launch {
+                repository.collectUsageNow()
+                onRefreshStatus()
+                onStatus("已手动触发补采")
+            }
+        }) { Text("手动补采") }
     }
     Section("最近 app_events") { appEvents.forEach { AppEventRow(it) } }
-    Section("最近 app_sessions") { appSessions.forEach { SessionRow(it, browserEvents = emptyList(), onDelete = null) } }
-    Section("最近 browser_events") { browserEvents.forEach { BrowserEventRow(it, onDelete = null) } }
+    Section("最近 app_sessions") { appSessions.forEach { SessionRow(it, onDelete = null) } }
 }
 
 @Composable
@@ -420,58 +501,7 @@ private fun MetricCard(title: String, subtitle: String, value: String) {
 }
 
 @Composable
-private fun SessionRow(session: AppSessionEntity, browserEvents: List<BrowserEventEntity>, onDelete: (() -> Unit)?) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(displayAppName(session.appLabel, session.packageName), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${formatTime(session.startTs)}-${formatTime(session.endTs)} · ${session.packageName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text("${session.category}${session.semanticCategory?.let { " · $it" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(formatDuration(session.durationMs), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    if (onDelete != null) TextButton(onClick = onDelete) { Text("删除") }
-                }
-            }
-            if (browserEvents.isNotEmpty()) {
-                HorizontalDivider()
-                browserEvents.take(6).forEach { event ->
-                    Text(
-                        "${formatTime(event.ts)} ${event.title?.takeIf { it.isNotBlank() } ?: event.url}",
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (browserEvents.size > 6) {
-                    Text("+${browserEvents.size - 6} 条 Via URL 记录", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BrowserEventRow(event: BrowserEventEntity, onDelete: (() -> Unit)?) {
-    RowCard(
-        title = event.title?.takeIf { it.isNotBlank() } ?: event.url,
-        subtitle = "${formatTime(event.ts)} · ${event.eventType}",
-        value = event.durationMs?.let { formatDuration(it) } ?: "",
-        onDelete = onDelete
-    )
-}
-
-@Composable
-private fun AppEventRow(event: AppEventEntity) {
-    Text("${formatTime(event.ts)} ${readablePackageName(event.packageName)} type=${event.eventType}")
-}
-
-@Composable
-private fun RowCard(title: String, subtitle: String, value: String, onDelete: (() -> Unit)?) {
+private fun SessionRow(session: AppSessionEntity, onDelete: (() -> Unit)?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -481,17 +511,21 @@ private fun RowCard(title: String, subtitle: String, value: String, onDelete: ((
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(displayAppName(session.appLabel, session.packageName), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${formatTime(session.startTs)}-${formatTime(session.endTs)} · ${session.packageName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text("${session.category}${session.semanticCategory?.let { " · $it" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (value.isNotBlank()) Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text("删除") }
-                }
+                Text(formatDuration(session.durationMs), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                if (onDelete != null) TextButton(onClick = onDelete) { Text("删除") }
             }
         }
     }
+}
+
+@Composable
+private fun AppEventRow(event: AppEventEntity) {
+    Text("${formatTime(event.ts)} ${readablePackageName(event.packageName)} type=${event.eventType}")
 }
 
 private fun formatDuration(ms: Long): String {
@@ -526,4 +560,8 @@ private fun readablePackageName(packageName: String): String {
 
 private fun formatTime(ms: Long): String =
     DateTimeFormatter.ofPattern("HH:mm")
+        .format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+
+private fun formatDateTime(ms: Long): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         .format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))

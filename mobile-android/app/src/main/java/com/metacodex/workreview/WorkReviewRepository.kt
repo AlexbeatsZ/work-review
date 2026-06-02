@@ -5,19 +5,14 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.metacodex.workreview.data.browser.PrivacyFilter
-import com.metacodex.workreview.data.browser.PrivacySettings
 import com.metacodex.workreview.data.db.ActivityEntity
 import com.metacodex.workreview.data.db.AppSessionEntity
-import com.metacodex.workreview.data.db.BrowserEventEntity
 import com.metacodex.workreview.data.db.UserPreferenceEntity
 import com.metacodex.workreview.data.db.WorkReviewDatabase
+import com.metacodex.workreview.data.export.ExportSchedule
 import com.metacodex.workreview.data.usage.InstalledApp
-import com.metacodex.workreview.data.tagging.AutoTagger
 import com.metacodex.workreview.data.usage.UsageStatsCollector
 import com.metacodex.workreview.permissions.UsageAccess
-import com.metacodex.workreview.server.BrowserLogServer
-import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -28,15 +23,11 @@ class WorkReviewRepository(private val context: Context) {
     private val db = WorkReviewDatabase.get(context)
     private val dao = db.dao()
     private val zone = ZoneId.systemDefault()
-    private var browserLogServer: BrowserLogServer? = null
 
     fun usageSummary(date: LocalDate) = dao.usageSummaryForDay(date.startMs(), date.endMs())
     fun sessions(date: LocalDate) = dao.sessionsForDay(date.startMs(), date.endMs())
-    fun browserEvents(date: LocalDate): Flow<List<BrowserEventEntity>> =
-        dao.browserEventsForDay(date.startMs(), date.endMs())
     fun recentAppEvents(limit: Int = 20) = dao.recentAppEvents(limit)
     fun recentAppSessions(limit: Int = 20) = dao.recentAppSessions(limit)
-    fun recentBrowserEvents(limit: Int = 20) = dao.recentBrowserEvents(limit)
 
     suspend fun collectUsageNow() {
         if (!UsageAccess.hasUsageAccess(context)) return
@@ -56,6 +47,7 @@ class WorkReviewRepository(private val context: Context) {
         dao.insertAppSessions(result.sessions)
         dao.insertActivities(result.sessions.map { it.toActivity() })
         dao.putPreference(UserPreferenceEntity(KEY_LAST_COLLECTED_TS, now.toString()))
+        dao.putPreference(UserPreferenceEntity(KEY_LAST_COLLECTION_AT, now.toString()))
     }
 
     suspend fun recollectUsageForDate(date: LocalDate) {
@@ -76,87 +68,14 @@ class WorkReviewRepository(private val context: Context) {
         dao.insertActivities(result.sessions.map { it.toActivity() })
     }
 
-    suspend fun insertBrowserEvent(event: BrowserEventEntity) {
-        val settings = browserPrivacySettings()
-        PrivacyFilter(settings).apply(event)?.let { filtered ->
-            val viaSession = findViaSessionFor(filtered.ts) ?: return
-            val classification = AutoTagger.classifyUrl(filtered.url, filtered.title)
-            val enriched = filtered.copy(
-                viaSessionId = viaSession.id,
-                category = classification.category,
-                semanticCategory = classification.semanticCategory,
-                semanticConfidence = classification.semanticConfidence
-            )
-            dao.insertBrowserEvent(enriched)
-            dao.insertActivities(listOf(enriched.toActivity(viaSession)))
-        }
-    }
-
-    suspend fun setLocalServerEnabled(enabled: Boolean) {
-        dao.putPreference(UserPreferenceEntity(KEY_LOCAL_SERVER_ENABLED, enabled.toString()))
-        if (enabled) startBrowserLogServer() else stopBrowserLogServer()
-    }
-
-    suspend fun localServerEnabled(): Boolean =
-        dao.getPreference(KEY_LOCAL_SERVER_ENABLED)?.toBooleanStrictOrNull() ?: false
-
-    fun startBrowserLogServer(): Boolean {
-        if (browserLogServer != null) return true
-        return runCatching {
-            browserLogServer = BrowserLogServer(this).also { it.start() }
-            true
-        }.getOrDefault(false)
-    }
-
-    fun stopBrowserLogServer() {
-        browserLogServer?.stop()
-        browserLogServer = null
-    }
-
-    fun isBrowserLogServerRunning(): Boolean = browserLogServer != null
-
-    suspend fun setBrowserLoggingEnabled(enabled: Boolean) {
-        dao.putPreference(UserPreferenceEntity(KEY_BROWSER_LOGGING_ENABLED, enabled.toString()))
-    }
-
-    suspend fun setDomainOnly(enabled: Boolean) {
-        dao.putPreference(UserPreferenceEntity(KEY_DOMAIN_ONLY, enabled.toString()))
-    }
-
-    suspend fun setBlockedDomains(domains: String) {
-        dao.putPreference(UserPreferenceEntity(KEY_BLOCKED_DOMAINS, domains))
-    }
-
-    suspend fun browserPrivacySettings(): PrivacySettings =
-        PrivacySettings(
-            browserLoggingEnabled = dao.getPreference(KEY_BROWSER_LOGGING_ENABLED)
-                ?.toBooleanStrictOrNull() ?: true,
-            domainOnly = dao.getPreference(KEY_DOMAIN_ONLY)?.toBooleanStrictOrNull() ?: false,
-            blockedDomains = dao.getPreference(KEY_BLOCKED_DOMAINS)
-                ?.split(',', '\n')
-                ?.map { it.trim().lowercase() }
-                ?.filter { it.isNotBlank() }
-                ?.toSet()
-                ?: emptySet()
-        )
-
     suspend fun clearAppUsage() {
         dao.clearAppEvents()
         dao.clearAppSessions()
         dao.clearUsageActivities()
     }
 
-    suspend fun clearBrowserEvents() {
-        dao.clearBrowserEvents()
-        dao.clearBrowserActivities()
-    }
-
     suspend fun deleteAppSession(id: Long) {
         dao.deleteAppSession(id)
-    }
-
-    suspend fun deleteBrowserEvent(id: Long) {
-        dao.deleteBrowserEvent(id)
     }
 
     suspend fun setMinSessionSeconds(seconds: Int) {
@@ -213,16 +132,6 @@ class WorkReviewRepository(private val context: Context) {
         )
     }
 
-    fun schedulePeriodicAutoExport() {
-        val request = PeriodicWorkRequestBuilder<AutoExportWorker>(6, TimeUnit.HOURS)
-            .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "auto-export",
-            ExistingPeriodicWorkPolicy.UPDATE,
-            request
-        )
-    }
-
     suspend fun scheduleTimedAutoExports() {
         val workManager = WorkManager.getInstance(context)
         exportTimes().forEachIndexed { index, time ->
@@ -240,16 +149,6 @@ class WorkReviewRepository(private val context: Context) {
     suspend fun rescheduleTimedAutoExports() {
         WorkManager.getInstance(context).cancelAllWorkByTag("timed-auto-export")
         scheduleTimedAutoExports()
-    }
-
-    fun scheduleNextTimedAutoExport() {
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "timed-auto-export",
-            ExistingWorkPolicy.REPLACE,
-            androidx.work.OneTimeWorkRequestBuilder<AutoExportWorker>()
-                .setInitialDelay(nextExportDelayMs(), TimeUnit.MILLISECONDS)
-                .build()
-        )
     }
 
     suspend fun setAutoExportEnabled(enabled: Boolean) {
@@ -272,29 +171,17 @@ class WorkReviewRepository(private val context: Context) {
         autoExportTimesText()
 
     suspend fun setAutoExportTimes(value: String) {
-        dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_TIME, parseExportTimes(value).joinToString("\n")))
+        dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_TIME, ExportSchedule.parseTimes(value).joinToString("\n")))
         if (autoExportEnabled()) rescheduleTimedAutoExports()
     }
 
     suspend fun autoExportTimesText(): String =
-        dao.getPreference(KEY_AUTO_EXPORT_TIME) ?: "11:30"
+        dao.getPreference(KEY_AUTO_EXPORT_TIME) ?: ExportSchedule.DEFAULT_TIME
 
-    suspend fun exportTimes(): List<String> = parseExportTimes(autoExportTimesText())
-
-    private fun nextExportDelayMs(): Long {
-        val timeText = runCatching {
-            kotlinx.coroutines.runBlocking { autoExportTime() }
-        }.getOrDefault("11:30")
-        val target = runCatching { LocalTime.parse(normalizeExportTime(timeText)) }
-            .getOrDefault(LocalTime.of(11, 30))
-        val now = ZonedDateTime.now(zone)
-        var next = now.toLocalDate().atTime(target).atZone(zone)
-        if (!next.isAfter(now)) next = next.plusDays(1)
-        return java.time.Duration.between(now, next).toMillis().coerceAtLeast(60_000)
-    }
+    suspend fun exportTimes(): List<String> = ExportSchedule.parseTimes(autoExportTimesText())
 
     private fun nextExportDelayMs(timeText: String): Long {
-        val target = runCatching { LocalTime.parse(normalizeExportTime(timeText)) }
+        val target = runCatching { LocalTime.parse(ExportSchedule.normalizeTime(timeText)) }
             .getOrDefault(LocalTime.of(11, 30))
         val now = ZonedDateTime.now(zone)
         var next = now.toLocalDate().atTime(target).atZone(zone)
@@ -302,23 +189,22 @@ class WorkReviewRepository(private val context: Context) {
         return java.time.Duration.between(now, next).toMillis().coerceAtLeast(60_000)
     }
 
-    private fun parseExportTimes(value: String): List<String> =
-        value.split(',', '\n', ';')
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .map(::normalizeExportTime)
-            .distinct()
-            .ifEmpty { listOf("11:30") }
-
-    private fun normalizeExportTime(value: String): String {
-        val parts = value.trim().split(':')
-        val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 11
-        val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 30
-        return "%02d:%02d".format(hour, minute)
+    suspend fun setExportDirectoryUri(uri: String?) {
+        dao.putPreference(UserPreferenceEntity(KEY_EXPORT_DIRECTORY_URI, uri.orEmpty()))
     }
 
-    private suspend fun findViaSessionFor(ts: Long): AppSessionEntity? =
-        dao.viaSessionAt(ts)
+    suspend fun exportDirectoryUri(): String? =
+        dao.getPreference(KEY_EXPORT_DIRECTORY_URI)?.takeIf { it.isNotBlank() }
+
+    suspend fun setLastExportAt(timestamp: Long) {
+        dao.putPreference(UserPreferenceEntity(KEY_LAST_EXPORT_AT, timestamp.toString()))
+    }
+
+    suspend fun lastExportAt(): Long? =
+        dao.getPreference(KEY_LAST_EXPORT_AT)?.toLongOrNull()
+
+    suspend fun lastCollectionAt(): Long? =
+        dao.getPreference(KEY_LAST_COLLECTION_AT)?.toLongOrNull()
 
     private fun AppSessionEntity.toActivity(): ActivityEntity =
         ActivityEntity(
@@ -333,20 +219,6 @@ class WorkReviewRepository(private val context: Context) {
             mobileSource = "android_usage"
         )
 
-    private fun BrowserEventEntity.toActivity(viaSession: AppSessionEntity?): ActivityEntity =
-        ActivityEntity(
-            timestamp = ts / 1000,
-            appName = viaSession?.appLabel ?: "Via",
-            windowTitle = title?.takeIf { it.isNotBlank() } ?: url,
-            category = category,
-            duration = ((durationMs ?: 0L) / 1000).coerceAtLeast(1),
-            browserUrl = url,
-            executablePath = browserPackage,
-            semanticCategory = semanticCategory,
-            semanticConfidence = semanticConfidence,
-            mobileSource = "via_userscript"
-        )
-
     private fun LocalDate.startMs(): Long =
         atStartOfDay(zone).toInstant().toEpochMilli()
 
@@ -354,14 +226,13 @@ class WorkReviewRepository(private val context: Context) {
 
     companion object {
         private const val KEY_LAST_COLLECTED_TS = "last_collected_ts"
-        private const val KEY_LOCAL_SERVER_ENABLED = "local_server_enabled"
-        private const val KEY_BROWSER_LOGGING_ENABLED = "browser_logging_enabled"
-        private const val KEY_DOMAIN_ONLY = "browser_domain_only"
-        private const val KEY_BLOCKED_DOMAINS = "browser_blocked_domains"
         private const val KEY_MIN_SESSION_SECONDS = "min_session_seconds"
         private const val KEY_MERGE_GAP_SECONDS = "merge_gap_seconds"
         private const val KEY_AUTO_EXPORT_ENABLED = "auto_export_enabled"
         private const val KEY_AUTO_EXPORT_TIME = "auto_export_time"
         private const val KEY_IGNORED_PACKAGES = "ignored_packages"
+        private const val KEY_EXPORT_DIRECTORY_URI = "export_directory_uri"
+        private const val KEY_LAST_EXPORT_AT = "last_export_at"
+        private const val KEY_LAST_COLLECTION_AT = "last_collection_at"
     }
 }

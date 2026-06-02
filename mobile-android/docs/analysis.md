@@ -10,7 +10,7 @@
 
 - Desktop active-window and title capture does not map cleanly to Android. Android uses `UsageStatsManager.queryEvents(start, end)` and package names.
 - Screenshot, OCR, active window title, and desktop process/window APIs are not ported.
-- Via browser details are collected through a Via userscript because normal Android apps cannot read another app's private browser history database.
+- Browser URL capture is out of scope for Android Lite because userscript-to-localhost logging is unreliable across mobile browsers and WebView implementations.
 - Background behavior uses WorkManager and backfill instead of assuming a permanently running process.
 
 ## Not in first version

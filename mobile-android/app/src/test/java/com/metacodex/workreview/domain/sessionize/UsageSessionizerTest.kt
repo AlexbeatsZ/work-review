@@ -78,4 +78,26 @@ class UsageSessionizerTest {
         )
         assertTrue(sessions.isEmpty())
     }
+
+    @Test
+    fun ignoresConfiguredPackages() {
+        val base = LocalDate.of(2026, 6, 2).atStartOfDay(zone).toInstant().toEpochMilli()
+        val sessions = UsageSessionizer(
+            zoneId = zone,
+            minSessionMs = 0,
+            ignoredPackages = setOf("blocked.app")
+        ).sessionize(
+            events = listOf(
+                UsageEventModel(base, "blocked.app", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
+                UsageEventModel(base + 120_000, "blocked.app", null, UsageSessionizer.EVENT_ACTIVITY_PAUSED),
+                UsageEventModel(base + 130_000, "allowed.app", null, UsageSessionizer.EVENT_ACTIVITY_RESUMED),
+                UsageEventModel(base + 190_000, "allowed.app", null, UsageSessionizer.EVENT_ACTIVITY_PAUSED)
+            ),
+            rangeStart = base,
+            rangeEnd = base + 200_000,
+            labelResolver = labels
+        )
+        assertEquals(1, sessions.size)
+        assertEquals("allowed.app", sessions.single().packageName)
+    }
 }
