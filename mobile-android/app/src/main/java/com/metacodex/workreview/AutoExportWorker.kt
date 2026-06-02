@@ -14,7 +14,7 @@ class AutoExportWorker(
             val repository = WorkReviewRepository(applicationContext)
             if (repository.autoExportEnabled()) {
                 ExportWriter(applicationContext).exportAll()
-                repository.scheduleNextTimedAutoExport()
+                repository.rescheduleTimedAutoExports()
             }
         }.fold(
             onSuccess = { Result.success() },

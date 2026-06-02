@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -17,7 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -51,8 +50,8 @@ import com.metacodex.workreview.data.ExportWriter
 import com.metacodex.workreview.data.db.AppEventEntity
 import com.metacodex.workreview.data.db.AppSessionEntity
 import com.metacodex.workreview.data.db.BrowserEventEntity
+import com.metacodex.workreview.data.usage.InstalledApp
 import com.metacodex.workreview.permissions.UsageAccess
-import com.metacodex.workreview.server.BrowserLogServer
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -60,48 +59,32 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
-    private var server: BrowserLogServer? = null
+    private lateinit var repository: WorkReviewRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val repository = (application as WorkReviewApp).repository
+        repository = (application as WorkReviewApp).repository
         setContent {
-            WorkReviewMobileApp(
-                repository = repository,
-                isServerRunning = { server != null },
-                startServer = {
-                    if (server == null) {
-                        server = BrowserLogServer(repository).also { it.start() }
-                    }
-                },
-                stopServer = {
-                    server?.stop()
-                    server = null
-                }
-            )
+            WorkReviewMobileApp(repository = repository)
         }
     }
 
-    override fun onDestroy() {
-        server?.stop()
-        server = null
-        super.onDestroy()
+    override fun onResume() {
+        super.onResume()
+        if (::repository.isInitialized) {
+            kotlinx.coroutines.MainScope().launch { repository.collectUsageNow() }
+        }
     }
 }
 
 @Composable
-private fun WorkReviewMobileApp(
-    repository: WorkReviewRepository,
-    isServerRunning: () -> Boolean,
-    startServer: () -> Unit,
-    stopServer: () -> Unit
-) {
+private fun WorkReviewMobileApp(repository: WorkReviewRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var tab by remember { mutableStateOf("overview") }
     var hasUsageAccess by remember { mutableStateOf(UsageAccess.hasUsageAccess(context)) }
-    var serverRunning by remember { mutableStateOf(isServerRunning()) }
+    var serverRunning by remember { mutableStateOf(repository.isBrowserLogServerRunning()) }
     var status by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -157,11 +140,10 @@ private fun WorkReviewMobileApp(
                             serverRunning = serverRunning,
                             onToggleServer = {
                                 if (serverRunning) {
-                                    stopServer()
+                                    repository.stopBrowserLogServer()
                                     serverRunning = false
                                 } else {
-                                    startServer()
-                                    serverRunning = true
+                                    serverRunning = repository.startBrowserLogServer()
                                 }
                                 scope.launch { repository.setLocalServerEnabled(serverRunning) }
                             },
@@ -202,7 +184,6 @@ private fun PermissionCard(onOpenSettings: () -> Unit) {
 @Composable
 private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
     val summary by repository.usageSummary(date).collectAsState(initial = emptyList())
-    val browserEvents by repository.browserEvents(date).collectAsState(initial = emptyList())
     Section("今日 app 使用排行") {
         if (summary.isEmpty()) EmptyText()
         summary.forEachIndexed { index, row ->
@@ -212,14 +193,6 @@ private fun OverviewScreen(repository: WorkReviewRepository, date: LocalDate) {
                 value = formatDuration(row.totalDurationMs)
             )
         }
-    }
-    Section("Via URL 记录") {
-        val viaEvents = browserEvents
-            .filter { it.viaSessionId == null }
-            .sortedByDescending { it.ts }
-            .take(12)
-        if (viaEvents.isEmpty()) EmptyText()
-        viaEvents.forEach { BrowserEventRow(it, onDelete = null) }
     }
 }
 
@@ -241,18 +214,6 @@ private fun TimelineScreen(repository: WorkReviewRepository, date: LocalDate) {
             )
         }
     }
-    Section("未匹配 Via URL") {
-        val orphanEvents = browserEvents
-            .filter { it.viaSessionId == null }
-            .sortedByDescending { it.ts }
-        if (orphanEvents.isEmpty()) EmptyText()
-        orphanEvents.forEach { event ->
-            BrowserEventRow(
-                event = event,
-                onDelete = { scope.launch { repository.deleteBrowserEvent(event.id) } }
-            )
-        }
-    }
 }
 
 @Composable
@@ -266,35 +227,40 @@ private fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var minSessionSeconds by remember { mutableStateOf(60) }
     var autoExportEnabled by remember { mutableStateOf(true) }
-    var autoExportTime by remember { mutableStateOf("11:30") }
-    var ignoredPackages by remember { mutableStateOf("") }
+    var autoExportTimes by remember { mutableStateOf("11:30") }
+    var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
+    var ignoredPackages by remember { mutableStateOf<Set<String>>(emptySet()) }
     LaunchedEffect(Unit) {
         minSessionSeconds = repository.minSessionSeconds()
         autoExportEnabled = repository.autoExportEnabled()
-        autoExportTime = repository.autoExportTime()
-        ignoredPackages = repository.ignoredPackagesText()
+        autoExportTimes = repository.autoExportTimesText()
+        installedApps = repository.installedApps()
+        ignoredPackages = installedApps.filter { it.isIgnored }.map { it.packageName }.toSet()
     }
     Section("本地接收服务") {
         Text("状态：${if (serverRunning) "运行中" else "已关闭"}")
+        Text("健康检查：http://127.0.0.1:17890/health", style = MaterialTheme.typography.bodySmall)
         Button(onClick = onToggleServer) {
             Text(if (serverRunning) "关闭 127.0.0.1:17890/log" else "启动 127.0.0.1:17890/log")
         }
     }
     Section("隐私与清理") {
-        OutlinedTextField(
-            value = ignoredPackages,
-            onValueChange = { ignoredPackages = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("屏蔽程序包名") },
-            supportingText = { Text("一行一个或用逗号分隔，例如 com.tencent.mobileqq、md.obsidian。保存后重新整理当天记录生效。") },
-            minLines = 3
-        )
+        Text("屏蔽程序", fontWeight = FontWeight.SemiBold)
+        installedApps.take(120).forEach { app ->
+            AppIgnoreRow(
+                app = app.copy(isIgnored = ignoredPackages.contains(app.packageName)),
+                onToggle = { checked ->
+                    ignoredPackages = if (checked) ignoredPackages + app.packageName else ignoredPackages - app.packageName
+                }
+            )
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
                 scope.launch {
                     repository.setIgnoredPackages(ignoredPackages)
                     repository.recollectUsageForDate(LocalDate.now())
+                    installedApps = repository.installedApps()
                     onStatus("已保存屏蔽列表并重新整理今天")
                 }
             }
@@ -355,20 +321,20 @@ private fun SettingsScreen(
             )
         }
         OutlinedTextField(
-            value = autoExportTime,
-            onValueChange = { autoExportTime = it },
+            value = autoExportTimes,
+            onValueChange = { autoExportTimes = it },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("每天导出时间") },
-            supportingText = { Text("格式 HH:mm，例如 11:30") },
-            singleLine = true
+            supportingText = { Text("一行一个或用逗号分隔，例如 08:30、11:30、18:00") },
+            minLines = 3
         )
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
                 scope.launch {
-                    repository.setAutoExportTime(autoExportTime)
-                    autoExportTime = repository.autoExportTime()
-                    onStatus("已设置每天 $autoExportTime 自动导出")
+                    repository.setAutoExportTimes(autoExportTimes)
+                    autoExportTimes = repository.autoExportTimesText()
+                    onStatus("已设置多个自动导出时间")
                 }
             }
         ) {
@@ -398,6 +364,23 @@ private fun DebugScreen(repository: WorkReviewRepository, hasUsageAccess: Boolea
     Section("最近 app_events") { appEvents.forEach { AppEventRow(it) } }
     Section("最近 app_sessions") { appSessions.forEach { SessionRow(it, browserEvents = emptyList(), onDelete = null) } }
     Section("最近 browser_events") { browserEvents.forEach { BrowserEventRow(it, onDelete = null) } }
+}
+
+@Composable
+private fun AppIgnoreRow(app: InstalledApp, onToggle: (Boolean) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Checkbox(checked = app.isIgnored, onCheckedChange = onToggle)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                app.packageName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }
 
 @Composable

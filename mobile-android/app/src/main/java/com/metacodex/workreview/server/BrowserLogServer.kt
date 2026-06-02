@@ -18,6 +18,10 @@ class BrowserLogServer(
     private val scope = CoroutineScope(Dispatchers.IO)
 
     override fun serve(session: IHTTPSession): Response {
+        if (session.method == Method.GET && (session.uri == "/" || session.uri == "/health")) {
+            return cors(newFixedLengthResponse(Response.Status.OK, "application/json", """{"ok":true,"service":"work-review-mobile"}"""))
+        }
+
         if (session.method == Method.OPTIONS) {
             return cors(newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", ""))
         }

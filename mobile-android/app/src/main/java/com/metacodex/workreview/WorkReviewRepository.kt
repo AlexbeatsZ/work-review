@@ -12,9 +12,11 @@ import com.metacodex.workreview.data.db.AppSessionEntity
 import com.metacodex.workreview.data.db.BrowserEventEntity
 import com.metacodex.workreview.data.db.UserPreferenceEntity
 import com.metacodex.workreview.data.db.WorkReviewDatabase
+import com.metacodex.workreview.data.usage.InstalledApp
 import com.metacodex.workreview.data.tagging.AutoTagger
 import com.metacodex.workreview.data.usage.UsageStatsCollector
 import com.metacodex.workreview.permissions.UsageAccess
+import com.metacodex.workreview.server.BrowserLogServer
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalTime
@@ -26,6 +28,7 @@ class WorkReviewRepository(private val context: Context) {
     private val db = WorkReviewDatabase.get(context)
     private val dao = db.dao()
     private val zone = ZoneId.systemDefault()
+    private var browserLogServer: BrowserLogServer? = null
 
     fun usageSummary(date: LocalDate) = dao.usageSummaryForDay(date.startMs(), date.endMs())
     fun sessions(date: LocalDate) = dao.sessionsForDay(date.startMs(), date.endMs())
@@ -76,10 +79,10 @@ class WorkReviewRepository(private val context: Context) {
     suspend fun insertBrowserEvent(event: BrowserEventEntity) {
         val settings = browserPrivacySettings()
         PrivacyFilter(settings).apply(event)?.let { filtered ->
+            val viaSession = findViaSessionFor(filtered.ts) ?: return
             val classification = AutoTagger.classifyUrl(filtered.url, filtered.title)
-            val viaSession = findViaSessionFor(filtered.ts)
             val enriched = filtered.copy(
-                viaSessionId = viaSession?.id,
+                viaSessionId = viaSession.id,
                 category = classification.category,
                 semanticCategory = classification.semanticCategory,
                 semanticConfidence = classification.semanticConfidence
@@ -91,10 +94,26 @@ class WorkReviewRepository(private val context: Context) {
 
     suspend fun setLocalServerEnabled(enabled: Boolean) {
         dao.putPreference(UserPreferenceEntity(KEY_LOCAL_SERVER_ENABLED, enabled.toString()))
+        if (enabled) startBrowserLogServer() else stopBrowserLogServer()
     }
 
     suspend fun localServerEnabled(): Boolean =
         dao.getPreference(KEY_LOCAL_SERVER_ENABLED)?.toBooleanStrictOrNull() ?: false
+
+    fun startBrowserLogServer(): Boolean {
+        if (browserLogServer != null) return true
+        return runCatching {
+            browserLogServer = BrowserLogServer(this).also { it.start() }
+            true
+        }.getOrDefault(false)
+    }
+
+    fun stopBrowserLogServer() {
+        browserLogServer?.stop()
+        browserLogServer = null
+    }
+
+    fun isBrowserLogServerRunning(): Boolean = browserLogServer != null
 
     suspend fun setBrowserLoggingEnabled(enabled: Boolean) {
         dao.putPreference(UserPreferenceEntity(KEY_BROWSER_LOGGING_ENABLED, enabled.toString()))
@@ -156,6 +175,10 @@ class WorkReviewRepository(private val context: Context) {
         dao.putPreference(UserPreferenceEntity(KEY_IGNORED_PACKAGES, value))
     }
 
+    suspend fun setIgnoredPackages(packages: Set<String>) {
+        setIgnoredPackages(packages.sorted().joinToString("\n"))
+    }
+
     suspend fun ignoredPackagesText(): String =
         dao.getPreference(KEY_IGNORED_PACKAGES) ?: ""
 
@@ -165,6 +188,20 @@ class WorkReviewRepository(private val context: Context) {
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .toSet()
+
+    suspend fun installedApps(): List<InstalledApp> {
+        val ignored = ignoredPackages()
+        return context.packageManager.getInstalledApplications(0)
+            .map { info ->
+                InstalledApp(
+                    packageName = info.packageName,
+                    label = runCatching { context.packageManager.getApplicationLabel(info).toString() }
+                        .getOrDefault(info.packageName),
+                    isIgnored = ignored.contains(info.packageName)
+                )
+            }
+            .sortedWith(compareBy<InstalledApp> { !it.isIgnored }.thenBy { it.label.lowercase() })
+    }
 
     fun schedulePeriodicCollection() {
         val request = PeriodicWorkRequestBuilder<UsageCollectionWorker>(15, TimeUnit.MINUTES)
@@ -176,7 +213,7 @@ class WorkReviewRepository(private val context: Context) {
         )
     }
 
-    fun scheduleAutoExport() {
+    fun schedulePeriodicAutoExport() {
         val request = PeriodicWorkRequestBuilder<AutoExportWorker>(6, TimeUnit.HOURS)
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -184,6 +221,25 @@ class WorkReviewRepository(private val context: Context) {
             ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
+    }
+
+    suspend fun scheduleTimedAutoExports() {
+        val workManager = WorkManager.getInstance(context)
+        exportTimes().forEachIndexed { index, time ->
+            workManager.enqueueUniqueWork(
+                "timed-auto-export-$index",
+                ExistingWorkPolicy.REPLACE,
+                androidx.work.OneTimeWorkRequestBuilder<AutoExportWorker>()
+                    .setInitialDelay(nextExportDelayMs(time), TimeUnit.MILLISECONDS)
+                    .addTag("timed-auto-export")
+                    .build()
+            )
+        }
+    }
+
+    suspend fun rescheduleTimedAutoExports() {
+        WorkManager.getInstance(context).cancelAllWorkByTag("timed-auto-export")
+        scheduleTimedAutoExports()
     }
 
     fun scheduleNextTimedAutoExport() {
@@ -198,20 +254,32 @@ class WorkReviewRepository(private val context: Context) {
 
     suspend fun setAutoExportEnabled(enabled: Boolean) {
         dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_ENABLED, enabled.toString()))
-        if (enabled) scheduleNextTimedAutoExport()
+        if (enabled) {
+            rescheduleTimedAutoExports()
+        } else {
+            WorkManager.getInstance(context).cancelAllWorkByTag("timed-auto-export")
+        }
     }
 
     suspend fun autoExportEnabled(): Boolean =
         dao.getPreference(KEY_AUTO_EXPORT_ENABLED)?.toBooleanStrictOrNull() ?: true
 
     suspend fun setAutoExportTime(value: String) {
-        val normalized = normalizeExportTime(value)
-        dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_TIME, normalized))
-        scheduleNextTimedAutoExport()
+        setAutoExportTimes(value)
     }
 
     suspend fun autoExportTime(): String =
+        autoExportTimesText()
+
+    suspend fun setAutoExportTimes(value: String) {
+        dao.putPreference(UserPreferenceEntity(KEY_AUTO_EXPORT_TIME, parseExportTimes(value).joinToString("\n")))
+        if (autoExportEnabled()) rescheduleTimedAutoExports()
+    }
+
+    suspend fun autoExportTimesText(): String =
         dao.getPreference(KEY_AUTO_EXPORT_TIME) ?: "11:30"
+
+    suspend fun exportTimes(): List<String> = parseExportTimes(autoExportTimesText())
 
     private fun nextExportDelayMs(): Long {
         val timeText = runCatching {
@@ -224,6 +292,23 @@ class WorkReviewRepository(private val context: Context) {
         if (!next.isAfter(now)) next = next.plusDays(1)
         return java.time.Duration.between(now, next).toMillis().coerceAtLeast(60_000)
     }
+
+    private fun nextExportDelayMs(timeText: String): Long {
+        val target = runCatching { LocalTime.parse(normalizeExportTime(timeText)) }
+            .getOrDefault(LocalTime.of(11, 30))
+        val now = ZonedDateTime.now(zone)
+        var next = now.toLocalDate().atTime(target).atZone(zone)
+        if (!next.isAfter(now)) next = next.plusDays(1)
+        return java.time.Duration.between(now, next).toMillis().coerceAtLeast(60_000)
+    }
+
+    private fun parseExportTimes(value: String): List<String> =
+        value.split(',', '\n', ';')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map(::normalizeExportTime)
+            .distinct()
+            .ifEmpty { listOf("11:30") }
 
     private fun normalizeExportTime(value: String): String {
         val parts = value.trim().split(':')

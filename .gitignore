@@ -27,7 +27,7 @@ npm-debug.log*
 .env.*.local
 
 # Data
-data/
+/data/
 *.db
 *.db-journal
 screenshots/
