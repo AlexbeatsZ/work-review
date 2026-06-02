@@ -610,13 +610,7 @@ pub struct AppConfig {
     /// 日报提示词预设模板列表
     #[serde(default)]
     pub daily_report_prompt_presets: Vec<PromptPreset>,
-    /// 日报 Markdown 导出目录
-    #[serde(default)]
-    pub daily_report_export_dir: Option<String>,
-    /// 日报自动生成后是否自动导出 Markdown
-    #[serde(default)]
-    pub daily_report_auto_export: bool,
-    /// 日报自动生成时间 (HH:MM)，为空时使用工作结束时间
+    /// 日报自动生成时间 (HH:MM)，为空时不自动生成
     #[serde(default)]
     pub daily_report_auto_generate_time: Option<String>,
     /// 是否启用本地 localhost API
@@ -684,7 +678,7 @@ pub struct AppConfig {
     #[serde(default)]
     pub work_end_minute: u8,
     /// 分段工作时间（优先级高于上面的单段时间）
-    /// 为空时使用 work_start_hour/work_end_hour 作为一段
+    /// 旧版兼容字段，lite 版会在 normalize 中强制改为全天。
     /// 例：[{start_hour:9,start_minute:0,end_hour:12,end_minute:0},{start_hour:13,start_minute:0,end_hour:18,end_minute:0}]
     #[serde(default)]
     pub work_time_segments: Vec<WorkTimeSegment>,
@@ -734,10 +728,10 @@ pub struct AppConfig {
 }
 
 fn default_work_start() -> u8 {
-    9
+    0
 }
 fn default_work_end() -> u8 {
-    18
+    0
 }
 fn default_bg_opacity() -> f32 {
     0.25
@@ -763,8 +757,6 @@ impl Default for AppConfig {
             storage: StorageConfig::default(),
             daily_report_custom_prompt: String::new(),
             daily_report_prompt_presets: Vec::new(),
-            daily_report_export_dir: None,
-            daily_report_auto_export: false,
             daily_report_auto_generate_time: None,
             localhost_api_enabled: false,
             localhost_api_host: None,
@@ -784,25 +776,17 @@ impl Default for AppConfig {
             auto_start_silent: false,
             macos_screen_capture_permission_prompted: false,
             theme: "system".to_string(),
-            work_start_hour: 9,
-            work_end_hour: 18,
+            work_start_hour: 0,
+            work_end_hour: 0,
             work_start_minute: 0,
             work_end_minute: 0,
-            work_time_segments: vec![
-                WorkTimeSegment {
-                    start_hour: 9,
-                    start_minute: 0,
-                    end_hour: 12,
-                    end_minute: 0,
-                },
-                WorkTimeSegment {
-                    start_hour: 13,
-                    start_minute: 0,
-                    end_hour: 18,
-                    end_minute: 0,
-                },
-            ],
-            work_time_enabled: true,
+            work_time_segments: vec![WorkTimeSegment {
+                start_hour: 0,
+                start_minute: 0,
+                end_hour: 0,
+                end_minute: 0,
+            }],
+            work_time_enabled: false,
             database_path: None,
             // 旧版兼容字段
             ai_provider: AiProviderConfig::default(),
@@ -841,8 +825,17 @@ impl AppConfig {
         normalize_manual_followups(&mut self.manual_followups);
         self.daily_report_custom_prompt = self.daily_report_custom_prompt.trim().to_string();
         normalize_prompt_presets(&mut self.daily_report_prompt_presets);
-        self.daily_report_export_dir =
-            normalize_optional_string(self.daily_report_export_dir.take());
+        self.work_start_hour = 0;
+        self.work_start_minute = 0;
+        self.work_end_hour = 0;
+        self.work_end_minute = 0;
+        self.work_time_enabled = false;
+        self.work_time_segments = vec![WorkTimeSegment {
+            start_hour: 0,
+            start_minute: 0,
+            end_hour: 0,
+            end_minute: 0,
+        }];
         self.database_path = normalize_optional_string(self.database_path.take());
         self.localhost_api_port = normalize_localhost_api_port(self.localhost_api_port);
         self.localhost_api_host = normalize_optional_string(self.localhost_api_host.take());
@@ -877,7 +870,7 @@ impl AppConfig {
 
     /// 迁移旧版配置到新结构
     fn migrate_legacy_config(&mut self) {
-        // 迁移旧版单段工作时间到 work_time_segments
+        // 兼容旧版单段工作时间字段，随后由 normalize 强制改为全天。
         if self.work_time_segments.is_empty() {
             self.work_time_segments = vec![WorkTimeSegment {
                 start_hour: self.work_start_hour,
@@ -932,26 +925,13 @@ impl AppConfig {
     }
 
     /// 获取有效的工作时间段列表
-    /// - work_time_enabled=false: 返回全天段 (0:00-23:59)，所有活动都算工作时间
-    /// - work_time_enabled=true + segments 非空: 使用自定义时间段
-    /// - work_time_enabled=true + segments 为空: 从旧字段构造一段
+    /// lite 版不再提供工作时间设置，所有活动按全天统计。
     pub fn effective_work_segments(&self) -> Vec<WorkTimeSegment> {
-        if !self.work_time_enabled {
-            return vec![WorkTimeSegment {
-                start_hour: 0,
-                start_minute: 0,
-                end_hour: 23,
-                end_minute: 59,
-            }];
-        }
-        if !self.work_time_segments.is_empty() {
-            return self.work_time_segments.clone();
-        }
         vec![WorkTimeSegment {
-            start_hour: self.work_start_hour,
-            start_minute: self.work_start_minute,
-            end_hour: self.work_end_hour,
-            end_minute: self.work_end_minute,
+            start_hour: 0,
+            start_minute: 0,
+            end_hour: 0,
+            end_minute: 0,
         }]
     }
 
@@ -1278,11 +1258,10 @@ mod tests {
     }
 
     #[test]
-    fn 日报附加提示词默认应为空且不导出() {
+    fn 日报附加提示词默认应为空() {
         let config = AppConfig::default();
 
         assert!(config.daily_report_custom_prompt.is_empty());
-        assert_eq!(config.daily_report_export_dir, None);
     }
 
     #[test]
@@ -1374,20 +1353,19 @@ mod tests {
 
     #[test]
     fn 旧桌宠待跟进应迁移到手动待跟进() {
-        let raw = r#"{
-            "avatarFollowups": [{
-                "id": "legacy-1",
-                "title": "整理发票",
-                "date": "2026-05-18",
-                "sourceApp": "Chrome",
-                "sourceTitle": "Invoices",
-                "projectKey": "finance",
-                "createdAt": 1770000000,
-                "status": "open"
-            }]
-        }"#;
+        let mut raw = serde_json::to_value(AppConfig::default()).unwrap();
+        raw["avatar_followups"] = serde_json::json!([{
+            "id": "legacy-1",
+            "title": "整理发票",
+            "date": "2026-05-18",
+            "sourceApp": "Chrome",
+            "sourceTitle": "Invoices",
+            "projectKey": "finance",
+            "createdAt": 1770000000,
+            "status": "open"
+        }]);
 
-        let mut config: AppConfig = serde_json::from_str(raw).unwrap();
+        let mut config: AppConfig = serde_json::from_value(raw).unwrap();
         config.normalize();
 
         assert_eq!(config.manual_followups.len(), 1);
@@ -1455,14 +1433,12 @@ mod tests {
     fn 配置规范化应清理空白日报附加设置() {
         let mut config = AppConfig {
             daily_report_custom_prompt: "  输出需要更偏周报风格  ".to_string(),
-            daily_report_export_dir: Some("   ".to_string()),
             ..AppConfig::default()
         };
 
         config.normalize();
 
         assert_eq!(config.daily_report_custom_prompt, "输出需要更偏周报风格");
-        assert_eq!(config.daily_report_export_dir, None);
     }
 
     #[test]

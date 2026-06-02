@@ -232,13 +232,13 @@ pub fn render_local_overview(stats: &DailyStats, locale: AppLocale) -> String {
     });
     let line = match locale {
         AppLocale::ZhCn => format!(
-            "- **总工作时长**: {}\n- **截图数量**: {} 张\n- **使用应用**: {} 个\n",
+            "- **总活跃时长**: {}\n- **截图数量**: {} 张\n- **使用应用**: {} 个\n",
             format_duration_for_locale(stats.total_duration, locale),
             stats.screenshot_count,
             stats.app_usage.len()
         ),
         AppLocale::ZhTw => format!(
-            "- **總工作時長**: {}\n- **截圖數量**: {} 張\n- **使用應用**: {} 個\n",
+            "- **總活躍時長**: {}\n- **截圖數量**: {} 張\n- **使用應用**: {} 個\n",
             format_duration_for_locale(stats.total_duration, locale),
             stats.screenshot_count,
             stats.app_usage.len()

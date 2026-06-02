@@ -205,26 +205,6 @@
     dispatch('change', config);
   }
 
-  async function pickDailyReportExportDir() {
-    const selected = await openDialog({
-      directory: true,
-      multiple: false,
-      defaultPath: config.daily_report_export_dir || dataDir || defaultDataDir || undefined,
-    });
-
-    if (!selected || Array.isArray(selected)) {
-      return;
-    }
-
-    config.daily_report_export_dir = selected;
-    handleChange();
-  }
-
-  function clearDailyReportExportDir() {
-    config.daily_report_export_dir = null;
-    handleChange();
-  }
-
   // 计算存储使用百分比
   $: usagePercent = storageStats 
     ? Math.min(Math.round((storageStats.total_size_mb / storageStats.storage_limit_mb) * 100), 100) 
@@ -463,53 +443,6 @@
         </div>
       </div>
     {/if}
-  </div>
-</div>
-
-<!-- 日报导出 -->
-<div class="settings-card mb-5" data-locale={currentLocale}>
-  <h3 class="settings-card-title">{t('settingsStorage.exportTitle')}</h3>
-
-  <div class="settings-block">
-    <div class="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-4 dark:border-slate-700/80 dark:bg-slate-800/40">
-      <p class="settings-text">{t('settingsStorage.exportDir')}</p>
-      <p class="settings-muted mt-1 break-all">
-        {config.daily_report_export_dir || t('settingsStorage.notSet')}
-      </p>
-      <div class="mt-4 flex flex-wrap gap-3">
-        <button
-          type="button"
-          on:click={pickDailyReportExportDir}
-          class="settings-action-secondary"
-        >
-          {t('settingsStorage.chooseDir')}
-        </button>
-        {#if config.daily_report_export_dir}
-          <button
-            type="button"
-            on:click={clearDailyReportExportDir}
-            class="settings-action-secondary"
-          >
-            {t('settingsStorage.clearDir')}
-          </button>
-        {/if}
-      </div>
-
-      <div class="mt-4 flex items-center justify-between">
-        <div>
-          <p class="settings-text">{t('settingsStorage.autoExport')}</p>
-          <p class="settings-muted mt-0.5">{t('settingsStorage.autoExportHint')}</p>
-        </div>
-        <button
-          type="button"
-          class="switch-track {config.daily_report_auto_export ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'} {!config.daily_report_export_dir ? 'opacity-60 cursor-not-allowed' : ''}"
-          on:click={() => { if (config.daily_report_export_dir) config.daily_report_auto_export = !config.daily_report_auto_export; }}
-          disabled={!config.daily_report_export_dir}
-        >
-          <span class="switch-thumb {config.daily_report_auto_export ? 'translate-x-5' : 'translate-x-0'}"></span>
-        </button>
-      </div>
-    </div>
   </div>
 </div>
 

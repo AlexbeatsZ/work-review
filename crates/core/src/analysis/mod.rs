@@ -356,9 +356,9 @@ pub fn generate_stats_summary_for_locale(stats: &DailyStats, locale: AppLocale) 
 
     match locale {
         AppLocale::ZhCn => {
-            summary.push_str("## 今日工作统计\n\n");
+            summary.push_str("## 今日活跃统计\n\n");
             summary.push_str(&format!(
-                "- 总工作时长: {}\n",
+                "- 总活跃时长: {}\n",
                 format_duration_for_locale(stats.total_duration, locale)
             ));
             summary.push_str(&format!("- 截图数量: {}\n\n", stats.screenshot_count));
@@ -367,7 +367,7 @@ pub fn generate_stats_summary_for_locale(stats: &DailyStats, locale: AppLocale) 
         AppLocale::ZhTw => {
             summary.push_str("## 今日工作統計\n\n");
             summary.push_str(&format!(
-                "- 總工作時長: {}\n",
+                "- 總活躍時長: {}\n",
                 format_duration_for_locale(stats.total_duration, locale)
             ));
             summary.push_str(&format!("- 截圖數量: {}\n\n", stats.screenshot_count));

@@ -2555,7 +2555,6 @@ async fn main() {
             commands::generate_report,
             commands::get_saved_report,
             commands::update_report_content,
-            commands::export_report_markdown,
             commands::get_config,
             commands::save_config,
             commands::start_recording,
@@ -2614,7 +2613,6 @@ async fn main() {
             commands::add_manual_followup,
             commands::update_manual_followup_status,
             commands::delete_manual_followup,
-            commands::save_intent_note_interval,
             get_platform,
         ])
         .build(tauri::generate_context!())

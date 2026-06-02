@@ -6,8 +6,6 @@
   import ConfirmDialog from './lib/components/ConfirmDialog.svelte';
   import Timeline from './routes/timeline/Timeline.svelte';
   import Summary from './routes/timeline/Summary.svelte';
-  import IntentNote from './routes/intent-note/IntentNote.svelte';
-  import IntentNoteNew from './routes/intent-note/IntentNoteNew.svelte';
   import Settings from './routes/settings/Settings.svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
@@ -15,7 +13,6 @@
   import { cache, getLocalDate } from './lib/stores/cache.js';
   import { applyLocaleToDocument, initializeLocale, locale } from '$lib/i18n/index.js';
   import { preloadAppIcons } from './lib/stores/iconCache.js';
-  import { resetIntentSession } from './lib/stores/intentSession.js';
 
   const appWindow = getCurrentWebviewWindow();
 
@@ -79,8 +76,6 @@
     '/': Timeline,
     '/timeline': Timeline,
     '/timeline/summary': Summary,
-    '/intent-note': IntentNote,
-    '/intent-note/new': IntentNoteNew,
     '/settings': Settings,
   };
 
@@ -92,9 +87,6 @@
   let unsubscribeLocale = () => {};
   $: currentLocale = $locale;
   const lowPowerMode = true;
-  $: if (!($location || '/').startsWith('/intent-note')) {
-    resetIntentSession();
-  }
 
   function applyTheme(_newTheme) {
     theme = 'dark';
@@ -144,7 +136,7 @@
       } catch (e) {
         console.error('加载配置失败:', e);
         applyTheme('system');
-        config = { work_end_hour: 18 };
+        config = {};
       }
       if (disposed) return;
 

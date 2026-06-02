@@ -210,7 +210,7 @@ impl ScreenLockMonitor {
 
     fn is_work_time_range(current: (u8, u8), start: (u8, u8), end: (u8, u8)) -> bool {
         if start == end {
-            return false;
+            return true;
         }
 
         if start < end {
@@ -235,9 +235,9 @@ mod tests {
     use crate::config::WorkTimeSegment;
 
     #[test]
-    fn 开始时间等于结束时间时不应视为工作时间() {
-        assert!(!ScreenLockMonitor::is_work_time(9, 0, 9, 0));
-        assert!(!ScreenLockMonitor::is_work_time(0, 0, 0, 0));
+    fn 开始时间等于结束时间时应视为全天活跃() {
+        assert!(ScreenLockMonitor::is_work_time(9, 0, 9, 0));
+        assert!(ScreenLockMonitor::is_work_time(0, 0, 0, 0));
     }
 
     #[test]

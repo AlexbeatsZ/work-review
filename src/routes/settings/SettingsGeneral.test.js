@@ -2,28 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('工作时间跨零点时应显示跨天后的总时长而不是横线', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsGeneral.svelte', import.meta.url),
-    'utf8'
-  );
-
-  assert.match(source, /endTotal === startTotal/);
-  assert.match(source, /endTotal < startTotal/);
-  assert.match(source, /24 \* 60/);
-  assert.doesNotMatch(source, /const diffSeconds = \(endTotal - startTotal\) \* 60;/);
-});
-
-test('开始时间等于结束时间时应显示零时长而不是横线', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsGeneral.svelte', import.meta.url),
-    'utf8'
-  );
-
-  assert.match(source, /endTotal === startTotal/);
-  assert.match(source, /formatDurationLocalized\(0\)/);
-});
-
 test('关闭开机自启动失败时不应吞掉所有异常并伪称已经移除成功', async () => {
   const source = await readFile(
     new URL('./components/SettingsGeneral.svelte', import.meta.url),
@@ -150,14 +128,15 @@ test('基本设置页不应继续内嵌设备节点与控制面配置块，相�
   assert.doesNotMatch(source, /control_plane_endpoint/);
 });
 
-test('工作时间设置应支持分段配置并写回 work_time_segments', async () => {
+test('基本设置页不应继续暴露工作时间设置，lite 版默认全天统计', async () => {
   const source = await readFile(
     new URL('./components/SettingsGeneral.svelte', import.meta.url),
     'utf8'
   );
 
-  assert.match(source, /config\.work_time_segments/);
-  assert.match(source, /function addWorkSegment\(/);
-  assert.match(source, /function removeWorkSegment\(/);
-  assert.match(source, /function updateSegment\(/);
+  assert.doesNotMatch(source, /config\.work_time_segments/);
+  assert.doesNotMatch(source, /config\.work_time_enabled/);
+  assert.doesNotMatch(source, /function addWorkSegment\(/);
+  assert.doesNotMatch(source, /function removeWorkSegment\(/);
+  assert.doesNotMatch(source, /function updateSegment\(/);
 });

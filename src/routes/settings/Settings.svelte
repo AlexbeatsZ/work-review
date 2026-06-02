@@ -69,12 +69,6 @@
       if (typeof config.daily_report_custom_prompt !== 'string') {
         config.daily_report_custom_prompt = '';
       }
-      if (typeof config.daily_report_export_dir !== 'string' && config.daily_report_export_dir !== null) {
-        config.daily_report_export_dir = null;
-      }
-      if (typeof config.daily_report_auto_export !== 'boolean') {
-        config.daily_report_auto_export = false;
-      }
       if (!Array.isArray(config.daily_report_prompt_presets)) {
         config.daily_report_prompt_presets = [];
       }

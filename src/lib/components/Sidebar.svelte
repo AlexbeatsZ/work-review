@@ -11,7 +11,6 @@
 
   const navItems = [
     { path: '/timeline', labelKey: 'sidebar.nav.timeline', icon: 'timeline' },
-    { path: '/intent-note', labelKey: 'sidebar.nav.intentNote', icon: 'intent' },
     { path: '/settings', labelKey: 'sidebar.nav.settings', icon: 'settings' },
   ];
 
@@ -157,10 +156,6 @@
                   {#if item.icon === 'timeline'}
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  {:else if item.icon === 'intent'}
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                   {:else if item.icon === 'settings'}
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

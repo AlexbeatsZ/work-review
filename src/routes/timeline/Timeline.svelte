@@ -856,9 +856,6 @@
                       <div class="timeline-entry-heading timeline-entry-heading-featured">
                         <span class="timeline-entry-app-name">{getTimelineAppName(activity)}</span>
                         <span class="timeline-entry-category timeline-entry-category-pill">{info.name}</span>
-                        {#if activity.intent_purpose}
-                          <span class="timeline-intent-badge">有目的</span>
-                        {/if}
                       </div>
                     </div>
                     <div class="timeline-entry-duration-chip">{formatDuration(activity.duration)}</div>
@@ -887,9 +884,6 @@
                   <div class="timeline-entry-heading">
                     <span class="timeline-entry-app-name">{getTimelineAppName(activity)}</span>
                     <span class="timeline-entry-category timeline-entry-category-pill">{info.name}</span>
-                    {#if activity.intent_purpose}
-                      <span class="timeline-intent-badge">有目的</span>
-                    {/if}
                   </div>
                 </div>
                 <p class="timeline-entry-title timeline-entry-title-compact" title={activity.window_title}>
@@ -1120,21 +1114,6 @@
             >
               {formatBrowserUrlForDisplay(selectedActivity.browser_url)}
             </button>
-          </div>
-        {/if}
-        {#if selectedActivity.intent_purpose}
-          <div class="timeline-intent-detail">
-            <span class="text-sm font-medium text-slate-500 dark:text-slate-400">目的备注</span>
-            <p class="text-base text-slate-800 dark:text-white mt-1">{selectedActivity.intent_purpose}</p>
-            {#if selectedActivity.intent_note}
-              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{selectedActivity.intent_note}</p>
-            {/if}
-            {#if selectedActivity.intent_start_timestamp && selectedActivity.intent_completed_at}
-              <p class="text-xs text-slate-400 mt-2">
-                {formatTime(selectedActivity.intent_start_timestamp)} - {formatTime(selectedActivity.intent_end_timestamp || selectedActivity.timestamp)}
-                · 完成于 {formatTime(selectedActivity.intent_completed_at)}
-              </p>
-            {/if}
           </div>
         {/if}
       </div>

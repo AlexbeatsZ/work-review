@@ -1,79 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 
-test('AI 设置中的 API 密钥输入应支持显示与隐藏切换', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsAI.svelte', import.meta.url),
-    'utf8'
-  );
+async function fileExists(url) {
+  try {
+    await access(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-  assert.match(source, /let showApiKey = false;/);
-  assert.match(source, /\{#if showApiKey\}/);
-  assert.match(source, /type="text"/);
-  assert.match(source, /type="password"/);
-  assert.match(source, /settingsAI\.hideApiKey/);
-  assert.match(source, /settingsAI\.showApiKey/);
+test('lite 设置页不应继续提供 AI 设置组件', async () => {
+  const aiComponentUrl = new URL('./components/SettingsAI.svelte', import.meta.url);
+  const settingsSource = await readFile(new URL('./Settings.svelte', import.meta.url), 'utf8');
+
+  assert.equal(await fileExists(aiComponentUrl), false);
+  assert.doesNotMatch(settingsSource, /SettingsAI/);
+  assert.doesNotMatch(settingsSource, /settings\.tabs\.ai/);
 });
 
-test('日报导出目录应从 AI 设置移到存储设置', async () => {
-  const aiSource = await readFile(
-    new URL('./components/SettingsAI.svelte', import.meta.url),
-    'utf8'
-  );
+test('lite 设置页不应继续展示日报导出入口', async () => {
+  const settingsSource = await readFile(new URL('./Settings.svelte', import.meta.url), 'utf8');
   const storageSource = await readFile(
     new URL('./components/SettingsStorage.svelte', import.meta.url),
     'utf8'
   );
 
-  assert.doesNotMatch(aiSource, /日报 Markdown 导出目录/);
-  assert.match(storageSource, /settingsStorage\.exportDir/);
-  assert.match(storageSource, /pickDailyReportExportDir/);
-});
-
-test('模型选择使用 select 下拉并支持手动输入切换', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsAI.svelte', import.meta.url),
-    'utf8'
-  );
-
-  assert.match(source, /invoke\('fetch_models'/);
-  assert.match(source, /refreshModels/);
-  assert.match(source, /fetchedModels/);
-  assert.match(source, /<select/);
-  assert.match(source, /settingsAI\.manualModel/);
-  assert.match(source, /settingsAI\.refreshModels/);
-  assert.match(source, /let showManualInput = false;/);
-});
-
-test('刷新模型列表后应给出反馈，且仅在模型为空时才默认回填首项', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsAI.svelte', import.meta.url),
-    'utf8'
-  );
-
-  assert.match(source, /!config\.text_model\.model\?\.trim\(\)/);
-  assert.match(source, /settingsAI\.loadedModels/);
-});
-
-test('已获取模型数量通过 modelsLoaded 变量追踪', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsAI.svelte', import.meta.url),
-    'utf8'
-  );
-
-  assert.match(source, /let modelsLoaded = 0;/);
-  assert.match(source, /modelsLoaded = fetchedModels\.length/);
-  assert.match(source, /modelsLoaded > 0/);
-});
-
-test('select 列表应渲染所有已获取模型并提供手动输入选项', async () => {
-  const source = await readFile(
-    new URL('./components/SettingsAI.svelte', import.meta.url),
-    'utf8'
-  );
-
-  assert.match(source, /#each fetchedModels as model \(model\)/);
-  assert.match(source, /__manual__/);
-  assert.doesNotMatch(source, /MANUAL_MODEL_VALUE/);
+  assert.doesNotMatch(settingsSource, /daily_report_export/);
+  assert.doesNotMatch(settingsSource, /daily_report_auto_export/);
+  assert.doesNotMatch(storageSource, /settingsStorage\.exportDir/);
+  assert.doesNotMatch(storageSource, /pickDailyReportExportDir/);
 });
