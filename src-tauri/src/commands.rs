@@ -100,6 +100,22 @@ fn normalize_saved_report_ai_mode(value: &str) -> String {
     value.trim().to_lowercase()
 }
 
+fn build_daily_report_export_path(export_dir: &Path, date: &str) -> PathBuf {
+    let safe_date = date.replace('/', "-").replace('\\', "-");
+    export_dir.join(format!("{safe_date}.md"))
+}
+
+fn export_daily_report_markdown(
+    export_dir: &Path,
+    date: &str,
+    content: &str,
+) -> Result<(), AppError> {
+    std::fs::create_dir_all(export_dir)?;
+    let output_path = build_daily_report_export_path(export_dir, date);
+    std::fs::write(output_path, content)?;
+    Ok(())
+}
+
 fn matches_ignored_app(app_name: &str, ignored_apps: &[String]) -> bool {
     let app_lower = app_name.to_lowercase();
     ignored_apps
@@ -1046,6 +1062,12 @@ pub(crate) async fn generate_report_inner(
         state.database.save_report(&daily_report)?;
     }
 
+    if config.daily_report_auto_export {
+        if let Some(export_dir) = config.daily_report_export_dir.as_deref() {
+            export_daily_report_markdown(Path::new(export_dir), &date, &report)?;
+        }
+    }
+
     Ok(report)
 }
 
@@ -1153,6 +1175,62 @@ pub async fn update_report_content(
     };
     state.database.save_report(&updated)?;
     Ok(())
+}
+
+pub(crate) fn export_report_markdown_inner(
+    date: String,
+    content: Option<String>,
+    export_dir: Option<String>,
+    state: &Arc<Mutex<AppState>>,
+) -> Result<String, AppError> {
+    let (export_dir, saved_content) = {
+        let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
+        let requested_export_dir = export_dir
+            .as_deref()
+            .map(str::trim)
+            .filter(|dir| !dir.is_empty())
+            .map(|dir| dir.to_string());
+        let configured_export_dir = state
+            .config
+            .daily_report_export_dir
+            .as_deref()
+            .map(str::trim)
+            .filter(|dir| !dir.is_empty())
+            .map(|dir| dir.to_string());
+        let export_dir = requested_export_dir
+            .or(configured_export_dir)
+            .ok_or_else(|| {
+                AppError::Config(
+                    "请先选择导出目录，或在设置中配置日报 Markdown 导出目录".to_string(),
+                )
+            })?;
+        let saved_content = if let Some(content) = content {
+            content
+        } else {
+            state
+                .database
+                .get_report(&date, Some("zh-CN"))?
+                .ok_or_else(|| AppError::Config("未找到可导出的日报".to_string()))?
+                .content
+        };
+        (export_dir, saved_content)
+    };
+
+    let export_dir_path = Path::new(&export_dir);
+    export_daily_report_markdown(export_dir_path, &date, &saved_content)?;
+    Ok(build_daily_report_export_path(export_dir_path, &date)
+        .to_string_lossy()
+        .to_string())
+}
+
+#[tauri::command]
+pub async fn export_report_markdown(
+    date: String,
+    content: Option<String>,
+    export_dir: Option<String>,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<String, AppError> {
+    export_report_markdown_inner(date, content, export_dir, state.inner())
 }
 
 /// 获取配置

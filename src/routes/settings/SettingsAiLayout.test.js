@@ -20,15 +20,15 @@ test('lite 设置页不应继续提供 AI 设置组件', async () => {
   assert.doesNotMatch(settingsSource, /settings\.tabs\.ai/);
 });
 
-test('lite 设置页不应继续展示日报导出入口', async () => {
+test('日报导出目录应放在存储设置中', async () => {
   const settingsSource = await readFile(new URL('./Settings.svelte', import.meta.url), 'utf8');
   const storageSource = await readFile(
     new URL('./components/SettingsStorage.svelte', import.meta.url),
     'utf8'
   );
 
-  assert.doesNotMatch(settingsSource, /daily_report_export/);
-  assert.doesNotMatch(settingsSource, /daily_report_auto_export/);
-  assert.doesNotMatch(storageSource, /settingsStorage\.exportDir/);
-  assert.doesNotMatch(storageSource, /pickDailyReportExportDir/);
+  assert.match(settingsSource, /daily_report_export_dir/);
+  assert.match(settingsSource, /daily_report_auto_export/);
+  assert.match(storageSource, /settingsStorage\.exportDir/);
+  assert.match(storageSource, /pickDailyReportExportDir/);
 });

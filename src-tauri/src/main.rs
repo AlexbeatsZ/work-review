@@ -2555,6 +2555,7 @@ async fn main() {
             commands::generate_report,
             commands::get_saved_report,
             commands::update_report_content,
+            commands::export_report_markdown,
             commands::get_config,
             commands::save_config,
             commands::start_recording,

@@ -610,6 +610,12 @@ pub struct AppConfig {
     /// 日报提示词预设模板列表
     #[serde(default)]
     pub daily_report_prompt_presets: Vec<PromptPreset>,
+    /// 日报 Markdown 导出目录
+    #[serde(default)]
+    pub daily_report_export_dir: Option<String>,
+    /// 日报自动生成后是否自动导出 Markdown
+    #[serde(default)]
+    pub daily_report_auto_export: bool,
     /// 日报自动生成时间 (HH:MM)，为空时不自动生成
     #[serde(default)]
     pub daily_report_auto_generate_time: Option<String>,
@@ -757,6 +763,8 @@ impl Default for AppConfig {
             storage: StorageConfig::default(),
             daily_report_custom_prompt: String::new(),
             daily_report_prompt_presets: Vec::new(),
+            daily_report_export_dir: None,
+            daily_report_auto_export: false,
             daily_report_auto_generate_time: None,
             localhost_api_enabled: false,
             localhost_api_host: None,
@@ -825,6 +833,8 @@ impl AppConfig {
         normalize_manual_followups(&mut self.manual_followups);
         self.daily_report_custom_prompt = self.daily_report_custom_prompt.trim().to_string();
         normalize_prompt_presets(&mut self.daily_report_prompt_presets);
+        self.daily_report_export_dir =
+            normalize_optional_string(self.daily_report_export_dir.take());
         self.work_start_hour = 0;
         self.work_start_minute = 0;
         self.work_end_hour = 0;
