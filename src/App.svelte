@@ -214,11 +214,10 @@
   });
 </script>
 
-<div class="app-shell flex h-screen overflow-hidden relative {lowPowerMode ? 'lite-low-power' : ''}">
-  <div class="pointer-events-none absolute inset-0 z-0 opacity-80 {lowPowerMode ? 'hidden' : ''}">
-    <div class="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.14),transparent_62%)] dark:bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_62%)]"></div>
-    <div class="absolute -right-16 top-24 h-48 w-48 rounded-full bg-indigo-200/20 blur-3xl dark:bg-indigo-500/12"></div>
-    <div class="absolute left-8 bottom-10 h-44 w-44 rounded-full bg-sky-200/20 blur-3xl dark:bg-sky-500/10"></div>
+<div class="app-shell work-ledger-shell flex h-screen overflow-hidden relative {lowPowerMode ? 'lite-low-power' : ''}">
+  <div class="work-ledger-atmosphere pointer-events-none absolute inset-0 z-0 {lowPowerMode ? 'hidden' : ''}">
+    <div class="work-ledger-rule work-ledger-rule-top"></div>
+    <div class="work-ledger-rule work-ledger-rule-bottom"></div>
   </div>
   <!--
     全局顶部拖拽层 (Invisible Drag Layer)

@@ -736,6 +736,7 @@
         </svg>
       </div>
       <div class="page-title-copy">
+        <span class="timeline-ledger-kicker">{isToday ? t('timeline.todayLabel') : selectedDate}</span>
         <h2>{t('timeline.title')}</h2>
         <p>
         {t('timeline.subtitle')}
@@ -1810,20 +1811,19 @@
   }
 
   :global(.dark) .timeline-summary-divider {
-    color: #475569;
+    color: var(--ledger-rule);
   }
 
   :global(.dark) .timeline-summary-action {
-    background: rgba(51, 65, 85, 0.72);
-    border-color: rgba(245, 158, 11, 0.16);
+    color: var(--ledger-ink);
+    background: transparent;
+    border-color: var(--ledger-rule);
   }
 
   :global(.dark) .timeline-editorial-board {
     background: var(--editorial-surface-featured);
-    border-color: rgba(71, 85, 105, 0.58);
-    box-shadow:
-      0 24px 54px rgba(2, 6, 23, 0.34),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-color: var(--ledger-rule);
+    box-shadow: none;
   }
 
   :global(.dark) .timeline-editorial-board::before {
@@ -1837,51 +1837,51 @@
   }
 
   :global(.dark) .timeline-rail {
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.84), rgba(148, 163, 184, 0.08));
+    background: linear-gradient(180deg, var(--ledger-copper), color-mix(in srgb, var(--ledger-copper) 16%, transparent));
   }
 
   :global(.dark) .timeline-entry-time {
-    color: #cbd5e1;
+    color: var(--ledger-ash);
   }
 
   :global(.dark) .timeline-entry-marker {
-    background: #e2e8f0;
+    background: var(--ledger-copper);
     box-shadow:
-      0 0 0 0.32rem rgba(15, 23, 42, 0.96),
-      0 0 0 0.5rem rgba(148, 163, 184, 0.08);
+      0 0 0 0.32rem var(--ledger-paper-raised),
+      0 0 0 0.4rem color-mix(in srgb, var(--ledger-copper) 22%, transparent);
   }
 
   :global(.dark) .timeline-entry:hover .timeline-entry-marker,
   :global(.dark) .timeline-entry:focus-visible .timeline-entry-marker {
     box-shadow:
-      0 0 0 0.32rem rgba(15, 23, 42, 0.98),
-      0 0 0 0.55rem rgba(245, 158, 11, 0.16);
+      0 0 0 0.32rem var(--ledger-paper-raised),
+      0 0 0 0.5rem color-mix(in srgb, var(--ledger-copper) 28%, transparent);
   }
 
   :global(.dark) .timeline-entry-marker-featured {
-    background: #fbbf24;
+    background: var(--ledger-copper);
   }
 
   :global(.dark) .timeline-entry-card {
-    border-color: rgba(148, 163, 184, 0.12);
+    border-color: color-mix(in srgb, var(--ledger-rule) 82%, transparent);
   }
 
   :global(.dark) .timeline-entry:hover .timeline-entry-card,
   :global(.dark) .timeline-entry:focus-visible .timeline-entry-card {
-    border-color: rgba(251, 191, 36, 0.18);
-    box-shadow: 0 18px 42px rgba(2, 6, 23, 0.34);
+    border-color: color-mix(in srgb, var(--ledger-copper) 42%, var(--ledger-rule));
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.12);
   }
 
   :global(.dark) .timeline-entry-card-featured {
-    background: rgba(15, 23, 42, 0.66);
+    background: color-mix(in srgb, var(--ledger-paper-raised) 78%, transparent);
   }
 
   :global(.dark) .timeline-summary-strip {
-    border-bottom-color: rgba(71, 85, 105, 0.72);
+    border-bottom-color: var(--ledger-rule);
   }
 
   :global(.dark) .timeline-entry-card-compact {
-    background: rgba(15, 23, 42, 0.54);
+    background: color-mix(in srgb, var(--ledger-paper-raised) 78%, transparent);
   }
 
   :global(.dark) .timeline-featured-image {
@@ -1890,28 +1890,28 @@
 
   :global(.dark) .timeline-entry-app-name,
   :global(.dark) .timeline-entry-title {
-    color: #f8fafc;
+    color: var(--ledger-ink);
   }
 
   :global(.dark) .timeline-entry-category {
-    color: #fbbf24;
+    color: var(--ledger-copper);
   }
 
   :global(.dark) .timeline-entry-category-pill {
-    border-color: rgba(245, 158, 11, 0.22);
-    background: rgba(120, 53, 15, 0.28);
-    color: #fcd34d;
+    border-color: color-mix(in srgb, var(--ledger-copper) 30%, transparent);
+    background: color-mix(in srgb, var(--ledger-copper-soft) 58%, transparent);
+    color: var(--ledger-copper);
   }
 
   :global(.dark) .timeline-entry-title-compact,
   :global(.dark) .timeline-entry-url,
   :global(.dark) .timeline-entry-tail {
-    color: #94a3b8;
+    color: var(--ledger-ash);
   }
 
   :global(.dark) .timeline-entry-duration-chip {
-    background: rgba(120, 53, 15, 0.26);
-    color: #fdba74;
+    background: color-mix(in srgb, var(--ledger-copper-soft) 58%, transparent);
+    color: var(--ledger-copper);
   }
 
   :global(.dark) .timeline-app-icon-blue {
@@ -1943,13 +1943,13 @@
   }
 
   :global(.dark) .timeline-load-more-btn {
-    color: #cbd5e1;
-    border-color: rgba(148, 163, 184, 0.24);
-    background: rgba(15, 23, 42, 0.48);
+    color: var(--ledger-ash);
+    border-color: var(--ledger-rule);
+    background: transparent;
   }
 
   :global(.dark) .timeline-load-more-btn:hover:enabled {
-    background: rgba(15, 23, 42, 0.68);
+    background: color-mix(in srgb, var(--ledger-paper-raised) 74%, transparent);
   }
 
   :global(.dark) .timeline-load-more-end {

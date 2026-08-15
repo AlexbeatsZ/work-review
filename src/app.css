@@ -2315,3 +2315,635 @@
     text-align: left;
   }
 }
+
+/* Work Ledger: Claude-inspired, content-first cross-platform direction. */
+.work-ledger-shell {
+  --ledger-paper: #f7f3ec;
+  --ledger-paper-raised: #fffcf7;
+  --ledger-ink: #292521;
+  --ledger-ash: #69625b;
+  --ledger-rule: #d9d0c5;
+  --ledger-copper: #c5663d;
+  --ledger-copper-soft: #f1d8ca;
+  --ledger-sage: #65705c;
+  --editorial-shell-bg: var(--ledger-paper);
+  --editorial-surface-featured: rgba(255, 252, 247, 0.82);
+  --editorial-surface-subtle: rgba(255, 252, 247, 0.58);
+  color: var(--ledger-ink);
+  background: var(--ledger-paper);
+  font-family: "Segoe UI Variable Text", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+}
+
+.dark .work-ledger-shell {
+  --ledger-paper: #201d1a;
+  --ledger-paper-raised: #292521;
+  --ledger-ink: #f3ece2;
+  --ledger-ash: #bdb2a7;
+  --ledger-rule: #49413a;
+  --ledger-copper: #df7e54;
+  --ledger-copper-soft: #663019;
+  --ledger-sage: #a9b59f;
+  --editorial-shell-bg: var(--ledger-paper);
+  --editorial-surface-featured: rgba(41, 37, 33, 0.88);
+  --editorial-surface-subtle: rgba(41, 37, 33, 0.62);
+}
+
+.work-ledger-atmosphere {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 68% 0%, rgba(197, 102, 61, 0.07), transparent 34%),
+    linear-gradient(90deg, rgba(41, 37, 33, 0.018) 1px, transparent 1px);
+  background-size: auto, 4.5rem 100%;
+}
+
+.dark .work-ledger-atmosphere {
+  background:
+    radial-gradient(circle at 68% 0%, rgba(223, 126, 84, 0.08), transparent 34%),
+    linear-gradient(90deg, rgba(243, 236, 226, 0.025) 1px, transparent 1px);
+  background-size: auto, 4.5rem 100%;
+}
+
+.work-ledger-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(197, 102, 61, 0.14);
+}
+
+.work-ledger-rule-top {
+  top: 4.75rem;
+}
+
+.work-ledger-rule-bottom {
+  bottom: 3.4rem;
+}
+
+.work-ledger-shell .app-shell-stage {
+  margin: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  gap: 0;
+  grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.work-ledger-shell .app-shell-sidebar-frame,
+.work-ledger-shell .app-shell-main-frame {
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.work-ledger-shell .app-shell-sidebar-frame {
+  background: color-mix(in srgb, var(--ledger-paper-raised) 54%, var(--ledger-paper));
+  border-right: 1px solid var(--ledger-rule);
+}
+
+.work-ledger-shell .app-shell-main-frame {
+  background: color-mix(in srgb, var(--ledger-paper) 92%, transparent);
+}
+
+.work-ledger-shell .app-shell-sidebar,
+.work-ledger-shell .app-shell-main,
+.work-ledger-shell .sidebar-editorial-shell {
+  border-radius: 0;
+  background: transparent;
+}
+
+.work-ledger-shell .app-shell-windowbar,
+.dark .work-ledger-shell .app-shell-windowbar {
+  background: var(--ledger-paper);
+  border-bottom: 1px solid color-mix(in srgb, var(--ledger-rule) 65%, transparent);
+}
+
+.work-ledger-shell .app-shell-window-btn {
+  color: var(--ledger-ash);
+}
+
+.work-ledger-shell .app-shell-window-btn:hover {
+  color: var(--ledger-ink);
+  background: color-mix(in srgb, var(--ledger-copper-soft) 48%, transparent);
+}
+
+.work-ledger-shell .sidebar-top {
+  padding: 1.35rem 1.15rem 1rem;
+}
+
+.work-ledger-shell .sidebar-main {
+  padding: 0 1rem 1rem;
+}
+
+.work-ledger-shell .sidebar-brand {
+  min-height: 5rem;
+  padding: 0;
+}
+
+.work-ledger-shell .sidebar-brand-mark {
+  border-radius: 0.72rem;
+  border: 1px solid color-mix(in srgb, var(--ledger-rule) 85%, transparent);
+  box-shadow: 0 5px 14px rgba(74, 54, 38, 0.08);
+}
+
+.work-ledger-shell .sidebar-brand-title {
+  color: var(--ledger-ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", serif;
+  font-size: 1.08rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.work-ledger-shell .sidebar-brand-line {
+  margin-top: 0.35rem;
+  color: var(--ledger-copper);
+  font-size: 0.67rem;
+  font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
+.work-ledger-shell .sidebar-brand-separator {
+  color: var(--ledger-rule);
+}
+
+.work-ledger-shell .sidebar-status-panel {
+  padding: 0.75rem 0;
+  border: 0;
+  border-top: 1px solid var(--ledger-rule);
+  border-bottom: 1px solid var(--ledger-rule);
+  border-radius: 0;
+  background: transparent;
+}
+
+.work-ledger-shell .sidebar-status-panel button {
+  color: var(--ledger-ash);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 74%, transparent);
+  border: 1px solid var(--ledger-rule);
+}
+
+.work-ledger-shell .sidebar-nav-section {
+  padding-top: 0.65rem;
+}
+
+.work-ledger-shell .sidebar-nav-item {
+  min-height: 2.9rem;
+  border-radius: 0.85rem;
+  color: var(--ledger-ash);
+}
+
+.work-ledger-shell .sidebar-nav-item-active {
+  padding-left: 1rem;
+  color: var(--ledger-ink);
+  background: color-mix(in srgb, var(--ledger-copper-soft) 56%, transparent);
+  box-shadow: none;
+}
+
+.work-ledger-shell .sidebar-nav-item-idle:hover {
+  color: var(--ledger-ink);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 68%, transparent);
+}
+
+.work-ledger-shell .sidebar-nav-item:hover {
+  transform: none;
+}
+
+.work-ledger-shell .sidebar-nav-item-active .sidebar-nav-icon,
+.work-ledger-shell .sidebar-nav-item-active .sidebar-nav-label {
+  color: var(--ledger-copper);
+}
+
+.work-ledger-shell .sidebar-nav-rail {
+  left: 0.35rem;
+  width: 2px;
+  height: 1.65rem;
+  background: var(--ledger-copper);
+}
+
+.work-ledger-shell .sidebar-nav-label {
+  font-size: 0.92rem;
+  letter-spacing: 0;
+}
+
+.work-ledger-shell .sidebar-footer {
+  border-color: var(--ledger-rule);
+}
+
+.work-ledger-shell .locale-switch {
+  color: var(--ledger-ash);
+  border-color: var(--ledger-rule);
+  background: transparent;
+  box-shadow: none;
+}
+
+.work-ledger-shell .page-shell {
+  width: min(100%, 76rem);
+  margin-inline: auto;
+  padding: clamp(1.6rem, 3vw, 2.75rem);
+}
+
+.work-ledger-shell .page-header {
+  align-items: flex-end;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--ledger-rule);
+}
+
+.work-ledger-shell .page-title-badge {
+  display: none;
+}
+
+.work-ledger-shell .page-title-copy {
+  gap: 0.18rem;
+}
+
+.work-ledger-shell .page-title-copy h2 {
+  color: var(--ledger-ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", serif;
+  font-size: clamp(2rem, 3vw, 2.65rem);
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.work-ledger-shell .page-title-copy p {
+  color: var(--ledger-ash);
+  font-size: 0.86rem;
+}
+
+.work-ledger-shell .timeline-ledger-kicker {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--ledger-copper);
+  font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.work-ledger-shell .page-control-input,
+.work-ledger-shell .page-control-btn,
+.work-ledger-shell .page-control-btn-icon,
+.work-ledger-shell .control-input {
+  color: var(--ledger-ink);
+  border-color: var(--ledger-rule);
+  background: var(--ledger-paper-raised);
+  box-shadow: none;
+}
+
+.work-ledger-shell :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ledger-copper) 72%, white);
+  outline-offset: 2px;
+}
+
+.work-ledger-shell .page-action-brand,
+.work-ledger-shell .settings-action-primary {
+  color: #fff;
+  background: var(--ledger-copper);
+  box-shadow: none;
+}
+
+.work-ledger-shell .page-card,
+.work-ledger-shell .page-card-soft,
+.work-ledger-shell .card,
+.work-ledger-shell .settings-card,
+.work-ledger-shell .settings-row {
+  border-color: var(--ledger-rule);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 78%, transparent);
+  box-shadow: none;
+}
+
+.work-ledger-shell .empty-state,
+.work-ledger-shell .empty-state-lg {
+  background: color-mix(in srgb, var(--ledger-paper-raised) 70%, transparent);
+  border-style: dashed;
+}
+
+.work-ledger-shell .timeline-editorial-board {
+  border: 1px solid var(--ledger-rule);
+  border-radius: 1.35rem;
+  background: color-mix(in srgb, var(--ledger-paper-raised) 72%, transparent);
+  box-shadow: none;
+}
+
+.work-ledger-shell .timeline-editorial-board::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 3.2rem,
+    color-mix(in srgb, var(--ledger-rule) 22%, transparent) 3.2rem calc(3.2rem + 1px)
+  );
+  opacity: 0.52;
+}
+
+.work-ledger-shell .timeline-summary-strip {
+  padding: 1rem 1.35rem;
+  border-color: var(--ledger-rule);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 72%, transparent);
+}
+
+.work-ledger-shell .timeline-summary-copy {
+  color: var(--ledger-ash);
+  font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.025em;
+}
+
+.work-ledger-shell .timeline-summary-divider {
+  color: var(--ledger-rule);
+}
+
+.work-ledger-shell .timeline-summary-action {
+  color: var(--ledger-ink);
+  border-color: var(--ledger-rule);
+  background: transparent;
+}
+
+.work-ledger-shell .timeline-rail {
+  width: 1px;
+  background: linear-gradient(180deg, var(--ledger-copper), color-mix(in srgb, var(--ledger-copper) 16%, transparent));
+}
+
+.work-ledger-shell .timeline-entry:hover {
+  transform: translateX(2px);
+  filter: none;
+}
+
+.work-ledger-shell .timeline-entry-time {
+  color: var(--ledger-ash);
+}
+
+.work-ledger-shell .timeline-entry-marker,
+.work-ledger-shell .timeline-entry-marker-featured {
+  width: 0.68rem;
+  height: 0.68rem;
+  background: var(--ledger-copper);
+  box-shadow:
+    0 0 0 0.31rem var(--ledger-paper-raised),
+    0 0 0 0.37rem color-mix(in srgb, var(--ledger-copper) 22%, transparent);
+}
+
+.work-ledger-shell .timeline-entry:hover .timeline-entry-marker,
+.work-ledger-shell .timeline-entry:focus-visible .timeline-entry-marker {
+  box-shadow:
+    0 0 0 0.31rem var(--ledger-paper-raised),
+    0 0 0 0.46rem color-mix(in srgb, var(--ledger-copper) 24%, transparent);
+}
+
+.work-ledger-shell .timeline-entry-card {
+  border-color: color-mix(in srgb, var(--ledger-rule) 82%, transparent);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--ledger-paper-raised) 70%, transparent);
+  box-shadow: none;
+}
+
+.work-ledger-shell .timeline-entry:hover .timeline-entry-card,
+.work-ledger-shell .timeline-entry:focus-visible .timeline-entry-card {
+  border-color: color-mix(in srgb, var(--ledger-copper) 42%, var(--ledger-rule));
+  box-shadow: 0 7px 18px rgba(74, 54, 38, 0.07);
+}
+
+.work-ledger-shell .timeline-entry-card-featured,
+.work-ledger-shell .timeline-entry-card-compact {
+  background: color-mix(in srgb, var(--ledger-paper-raised) 74%, transparent);
+  backdrop-filter: none;
+}
+
+.work-ledger-shell .timeline-featured-image,
+.work-ledger-shell .timeline-app-icon {
+  border-radius: 0.72rem;
+}
+
+.work-ledger-shell .timeline-entry-app-name,
+.work-ledger-shell .timeline-entry-title {
+  color: var(--ledger-ink);
+}
+
+.work-ledger-shell .timeline-entry-title-compact,
+.work-ledger-shell .timeline-entry-url,
+.work-ledger-shell .timeline-entry-tail {
+  color: var(--ledger-ash);
+}
+
+.work-ledger-shell .timeline-entry-category-pill,
+.work-ledger-shell .timeline-entry-duration-chip {
+  color: var(--ledger-copper);
+  border-color: color-mix(in srgb, var(--ledger-copper) 30%, transparent);
+  background: color-mix(in srgb, var(--ledger-copper-soft) 58%, transparent);
+}
+
+.work-ledger-shell .timeline-entry-duration,
+.work-ledger-shell .timeline-entry-duration-chip {
+  font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+}
+
+.work-ledger-shell .timeline-load-more-btn {
+  color: var(--ledger-ash);
+  border-color: var(--ledger-rule);
+  background: transparent;
+}
+
+.work-ledger-shell .summary-page-shell .summary-title-badge {
+  display: none;
+}
+
+.work-ledger-shell .summary-page-shell .summary-back-btn,
+.work-ledger-shell .summary-page-shell .summary-lite-card,
+.work-ledger-shell .summary-page-shell .summary-band-card,
+.work-ledger-shell .summary-page-shell .summary-state-card {
+  color: var(--ledger-ink);
+  border-color: var(--ledger-rule);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 72%, transparent);
+  box-shadow: none;
+}
+
+.work-ledger-shell .summary-page-shell .summary-editorial-shell::before {
+  background: var(--ledger-copper);
+}
+
+.work-ledger-shell .summary-page-shell .summary-band-anchor::after {
+  background: var(--ledger-copper);
+  box-shadow: 0 0 0 0.32rem var(--ledger-paper), 0 0 0 0.38rem color-mix(in srgb, var(--ledger-copper) 20%, transparent);
+}
+
+.work-ledger-shell .settings-editorial-shell .page-header {
+  position: static;
+  padding: 0 0 1.1rem;
+  border-color: var(--ledger-rule);
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.work-ledger-shell .settings-editorial-board,
+.work-ledger-shell .settings-stage-layout,
+.work-ledger-shell .settings-stage-shell {
+  background: transparent;
+}
+
+.work-ledger-shell .settings-stage-layout {
+  grid-template-columns: 10.75rem minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.work-ledger-shell .settings-tab-rail {
+  padding: 0 1.25rem 0 0;
+  border-width: 0 1px 0 0;
+  border-color: var(--ledger-rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.work-ledger-shell .settings-tab-rail-item {
+  color: var(--ledger-ash);
+  border-radius: 0.8rem;
+}
+
+.work-ledger-shell .settings-tab-rail-item:hover {
+  color: var(--ledger-ink);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 62%, transparent);
+}
+
+.work-ledger-shell .settings-tab-rail-item-active {
+  color: var(--ledger-copper);
+  background: color-mix(in srgb, var(--ledger-copper-soft) 52%, transparent);
+  box-shadow: none;
+}
+
+.work-ledger-shell .settings-stage-shell {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.work-ledger-shell .settings-card {
+  padding: 0.35rem 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.work-ledger-shell .settings-card-title {
+  margin-bottom: 1.1rem;
+  color: var(--ledger-ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", serif;
+  font-size: 1.12rem;
+  font-weight: 500;
+}
+
+.work-ledger-shell .settings-text,
+.work-ledger-shell .settings-label {
+  color: var(--ledger-ink);
+}
+
+.work-ledger-shell .settings-muted,
+.work-ledger-shell .settings-subtle,
+.work-ledger-shell .settings-note {
+  color: var(--ledger-ash);
+}
+
+.work-ledger-shell .settings-row {
+  padding: 0.8rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.work-ledger-shell .settings-stage-shell :where(input, select, textarea),
+.work-ledger-shell .control-inline,
+.work-ledger-shell .settings-segment-base {
+  color: var(--ledger-ink);
+  border-color: var(--ledger-rule);
+  background: color-mix(in srgb, var(--ledger-paper-raised) 72%, transparent);
+}
+
+.work-ledger-shell .settings-segment-active,
+.work-ledger-shell .settings-chip-button-active,
+.work-ledger-shell .switch-track.bg-primary-500 {
+  color: #fff;
+  background: var(--ledger-copper);
+  box-shadow: none;
+}
+
+.work-ledger-shell .settings-tab-rail-icon {
+  color: currentColor;
+  background: transparent;
+  box-shadow: none;
+}
+
+.work-ledger-shell .settings-save-dock {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.work-ledger-shell .settings-save-dock .settings-action-primary {
+  min-height: 2.55rem;
+  padding-inline: 1.05rem;
+  border-radius: 0.7rem;
+}
+
+.dark .work-ledger-shell .settings-editorial-shell .page-header,
+.dark .work-ledger-shell .settings-tab-rail,
+.dark .work-ledger-shell .settings-stage-shell,
+.dark .work-ledger-shell .settings-save-dock {
+  background: transparent;
+  box-shadow: none;
+}
+
+.dark .work-ledger-shell .settings-tab-rail-item-active {
+  color: var(--ledger-copper);
+  background: color-mix(in srgb, var(--ledger-copper-soft) 52%, transparent);
+}
+
+.dark .work-ledger-shell .settings-tab-rail-icon {
+  background: transparent;
+}
+
+.work-ledger-shell .settings-value,
+.work-ledger-shell .settings-link-action {
+  color: var(--ledger-copper);
+}
+
+.dark .work-ledger-shell .timeline-entry-card-featured,
+.dark .work-ledger-shell .timeline-entry-card-compact,
+.dark .work-ledger-shell .timeline-summary-strip,
+.dark .work-ledger-shell .summary-page-shell .summary-band-card,
+.dark .work-ledger-shell .summary-page-shell .summary-lite-card,
+.dark .work-ledger-shell .settings-card,
+.dark .work-ledger-shell .settings-row {
+  background: color-mix(in srgb, var(--ledger-paper-raised) 78%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-ledger-shell *,
+  .work-ledger-shell *::before,
+  .work-ledger-shell *::after {
+    scroll-behavior: auto;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}
+
+@media (max-width: 980px) {
+  .work-ledger-shell .app-shell-stage {
+    grid-template-columns: 12rem minmax(0, 1fr);
+  }
+
+  .work-ledger-shell .page-shell {
+    padding: 1.5rem;
+  }
+
+  .work-ledger-shell .timeline-editorial-shell {
+    --timeline-anchor-width: 4.7rem;
+  }
+}

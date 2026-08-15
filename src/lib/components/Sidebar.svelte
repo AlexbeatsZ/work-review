@@ -88,11 +88,11 @@
     <div class="sidebar-brand sidebar-brand-panel">
       <div class="sidebar-brand-row flex items-center gap-3 min-w-0">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+          <div class="sidebar-brand-mark w-10 h-10 overflow-hidden shrink-0">
             <img src="/icons/256x256.png" alt="Work Review" class="w-full h-full object-cover" />
           </div>
           <div class="min-w-0">
-            <h1 class="sidebar-brand-title">Work Review Lite</h1>
+            <h1 class="sidebar-brand-title">Work Review</h1>
             <p class="sidebar-brand-line" aria-label={translate('sidebar.tagline')}>
               {#each sidebarTagSegments as segment, index}
                 <span class="sidebar-brand-segment">{segment}</span>
