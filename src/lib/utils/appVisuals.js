@@ -1,10 +1,10 @@
 const electronSvg = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-    <rect x="6" y="6" width="36" height="36" rx="12" fill="#EEF4FF" />
-    <path d="M16 24c0-6 3.6-10 8-10s8 4 8 10-3.6 10-8 10-8-4-8-10Z" stroke="#4F46E5" stroke-width="2.4" />
-    <path d="M12 18c5.2 2.8 18.8 2.8 24 0" stroke="#4F46E5" stroke-width="2.4" stroke-linecap="round" />
-    <path d="M12 30c5.2-2.8 18.8-2.8 24 0" stroke="#4F46E5" stroke-width="2.4" stroke-linecap="round" />
-    <circle cx="24" cy="24" r="3.4" fill="#4F46E5" />
+    <rect x="4" y="4" width="40" height="40" rx="12" fill="#141A22" stroke="#252E3A" stroke-width="1.5" />
+    <path d="M16 24c0-6 3.6-10 8-10s8 4 8 10-3.6 10-8 10-8-4-8-10Z" stroke="#7AA2F7" stroke-width="2.2" />
+    <path d="M12 18c5.2 2.8 18.8 2.8 24 0" stroke="#7AA2F7" stroke-width="2.2" stroke-linecap="round" />
+    <path d="M12 30c5.2-2.8 18.8-2.8 24 0" stroke="#7AA2F7" stroke-width="2.2" stroke-linecap="round" />
+    <circle cx="24" cy="24" r="3.2" fill="#7AA2F7" />
   </svg>`
 )}`;
 
@@ -14,26 +14,26 @@ function encodeSvg(svg) {
 
 const discoverSvg = encodeSvg(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-    <rect x="4" y="4" width="40" height="40" rx="12" fill="#EEF6FF" />
-    <circle cx="24" cy="24" r="9.5" stroke="#2563EB" stroke-width="2.5" />
-    <path d="M24 16l3.4 6.8L34 26l-6.8 3.4L24 36l-3.4-6.6L14 26l6.6-3.2L24 16Z" fill="#60A5FA" />
+    <rect x="4" y="4" width="40" height="40" rx="12" fill="#141A22" stroke="#252E3A" stroke-width="1.5" />
+    <circle cx="24" cy="24" r="10" stroke="#7AA2F7" stroke-width="2.2" />
+    <path d="M24 16l3.4 6.8L34 26l-6.8 3.4L24 36l-3.4-6.6L14 26l6.6-3.2L24 16Z" fill="#38BDF8" />
   </svg>`
 );
 
 const mailSvg = encodeSvg(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-    <rect x="4" y="4" width="40" height="40" rx="12" fill="#EFF6FF" />
-    <rect x="10" y="13" width="28" height="22" rx="5" fill="#DBEAFE" stroke="#2563EB" stroke-width="2.2" />
-    <path d="M12 16.5 24 25l12-8.5" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="4" y="4" width="40" height="40" rx="12" fill="#141A22" stroke="#252E3A" stroke-width="1.5" />
+    <rect x="10" y="14" width="28" height="20" rx="4" fill="#1E293B" stroke="#7AA2F7" stroke-width="2" />
+    <path d="M12 17l12 8.5 12-8.5" stroke="#7AA2F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>`
 );
 
 const authSvg = encodeSvg(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-    <rect x="4" y="4" width="40" height="40" rx="12" fill="#F3F4F6" />
-    <path d="M24 12c5.7 3.7 10 4.5 10 4.5v8.3c0 6.2-4.3 10.6-10 11.2-5.7-.6-10-5-10-11.2v-8.3S18.3 15.7 24 12Z" fill="#D1D5DB" stroke="#4B5563" stroke-width="2.1" stroke-linejoin="round" />
-    <path d="M20.5 24.5v-2a3.5 3.5 0 1 1 7 0v2" stroke="#374151" stroke-width="2.1" stroke-linecap="round" />
-    <rect x="18.5" y="24.5" width="11" height="8.5" rx="2.2" fill="#4B5563" />
+    <rect x="4" y="4" width="40" height="40" rx="12" fill="#141A22" stroke="#252E3A" stroke-width="1.5" />
+    <path d="M24 12c5.5 3.5 9.5 4.3 9.5 4.3v7.8c0 5.8-4 10-9.5 10.6-5.5-.6-9.5-4.8-9.5-10.6v-7.8s4-.8 9.5-4.3Z" fill="#1E293B" stroke="#7AA2F7" stroke-width="2" stroke-linejoin="round" />
+    <circle cx="24" cy="22" r="2.5" fill="#7AA2F7" />
+    <path d="M24 24.5v4.5" stroke="#7AA2F7" stroke-width="2" stroke-linecap="round" />
   </svg>`
 );
 

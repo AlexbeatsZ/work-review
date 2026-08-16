@@ -50,25 +50,20 @@
       </div>
       <div class={iconClass}>
         {#if icon === 'duration'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 7v5l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13a.75.75 0 0 0-.75.75v4.5c0 .2.08.39.22.53l3 3a.75.75 0 0 0 1.06-1.06L13.25 11.94V7.75A.75.75 0 0 0 12.5 7Z" />
           </svg>
         {:else if icon === 'focus'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 10V7a3 3 0 013-3h3m4 0h3a3 3 0 013 3v3m0 4v3a3 3 0 01-3 3h-3m-4 0H7a3 3 0 01-3-3v-3" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm0-13a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 8.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0-5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
           </svg>
         {:else if icon === 'browser'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12h18M12 3a15.3 15.3 0 014 9 15.3 15.3 0 01-4 9 15.3 15.3 0 01-4-9 15.3 15.3 0 014-9Z" />
-            <circle cx="12" cy="12" r="9" stroke-width="1.8" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.93 9h-3.47a15.7 15.7 0 0 0-1.42-5.06A8.02 8.02 0 0 1 19.93 11ZM12 3.5c.87 1.4 1.6 3.75 1.95 6.5H10.05c.35-2.75 1.08-5.1 1.95-6.5ZM8.96 5.94A15.7 15.7 0 0 0 7.54 11H4.07a8.02 8.02 0 0 1 4.89-5.06ZM4.07 13h3.47c.3 1.9.8 3.72 1.42 5.06A8.02 8.02 0 0 1 4.07 13Zm7.93 7.5c-.87-1.4-1.6-3.75-1.95-6.5h3.9c-.35 2.75-1.08 5.1-1.95 6.5Zm3.04-2.44c.62-1.34 1.12-3.16 1.42-5.06h3.47a8.02 8.02 0 0 1-4.89 5.06Z" />
           </svg>
         {:else if icon === 'apps'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <rect x="4" y="4" width="7" height="7" rx="2" stroke-width="1.8" />
-            <rect x="13" y="4" width="7" height="7" rx="2" stroke-width="1.8" />
-            <rect x="4" y="13" width="7" height="7" rx="2" stroke-width="1.8" />
-            <rect x="13" y="13" width="7" height="7" rx="2" stroke-width="1.8" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2h2A2.5 2.5 0 0 1 11 4.5v2A2.5 2.5 0 0 1 8.5 9h-2A2.5 2.5 0 0 1 4 6.5v-2ZM6.5 3.5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2Zm6.5 1A2.5 2.5 0 0 1 15.5 2h2A2.5 2.5 0 0 1 20 4.5v2A2.5 2.5 0 0 1 17.5 9h-2A2.5 2.5 0 0 1 13 6.5v-2ZM15.5 3.5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2ZM4 15.5A2.5 2.5 0 0 1 6.5 13h2a2.5 2.5 0 0 1 2.5 2.5v2a2.5 2.5 0 0 1-2.5 2.5h-2A2.5 2.5 0 0 1 4 17.5v-2Zm2.5-1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2Zm6.5 1a2.5 2.5 0 0 1 2.5-2.5h2a2.5 2.5 0 0 1 2.5 2.5v2a2.5 2.5 0 0 1-2.5 2.5h-2a2.5 2.5 0 0 1-2.5-2.5v-2Zm2.5-1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2Z" />
           </svg>
         {:else}
           {icon}
@@ -85,25 +80,20 @@
       </div>
       <div class={iconClass}>
         {#if icon === 'duration'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 7v5l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13a.75.75 0 0 0-.75.75v4.5c0 .2.08.39.22.53l3 3a.75.75 0 0 0 1.06-1.06L13.25 11.94V7.75A.75.75 0 0 0 12.5 7Z" />
           </svg>
         {:else if icon === 'focus'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 10V7a3 3 0 013-3h3m4 0h3a3 3 0 013 3v3m0 4v3a3 3 0 01-3 3h-3m-4 0H7a3 3 0 01-3-3v-3" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm0-13a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 8.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0-5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
           </svg>
         {:else if icon === 'browser'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12h18M12 3a15.3 15.3 0 014 9 15.3 15.3 0 01-4 9 15.3 15.3 0 01-4-9 15.3 15.3 0 014-9Z" />
-            <circle cx="12" cy="12" r="9" stroke-width="1.8" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.93 9h-3.47a15.7 15.7 0 0 0-1.42-5.06A8.02 8.02 0 0 1 19.93 11ZM12 3.5c.87 1.4 1.6 3.75 1.95 6.5H10.05c.35-2.75 1.08-5.1 1.95-6.5ZM8.96 5.94A15.7 15.7 0 0 0 7.54 11H4.07a8.02 8.02 0 0 1 4.89-5.06ZM4.07 13h3.47c.3 1.9.8 3.72 1.42 5.06A8.02 8.02 0 0 1 4.07 13Zm7.93 7.5c-.87-1.4-1.6-3.75-1.95-6.5h3.9c-.35 2.75-1.08 5.1-1.95 6.5Zm3.04-2.44c.62-1.34 1.12-3.16 1.42-5.06h3.47a8.02 8.02 0 0 1-4.89 5.06Z" />
           </svg>
         {:else if icon === 'apps'}
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <rect x="4" y="4" width="7" height="7" rx="2" stroke-width="1.8" />
-            <rect x="13" y="4" width="7" height="7" rx="2" stroke-width="1.8" />
-            <rect x="4" y="13" width="7" height="7" rx="2" stroke-width="1.8" />
-            <rect x="13" y="13" width="7" height="7" rx="2" stroke-width="1.8" />
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2h2A2.5 2.5 0 0 1 11 4.5v2A2.5 2.5 0 0 1 8.5 9h-2A2.5 2.5 0 0 1 4 6.5v-2ZM6.5 3.5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2Zm6.5 1A2.5 2.5 0 0 1 15.5 2h2A2.5 2.5 0 0 1 20 4.5v2A2.5 2.5 0 0 1 17.5 9h-2A2.5 2.5 0 0 1 13 6.5v-2ZM15.5 3.5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2ZM4 15.5A2.5 2.5 0 0 1 6.5 13h2a2.5 2.5 0 0 1 2.5 2.5v2a2.5 2.5 0 0 1-2.5 2.5h-2A2.5 2.5 0 0 1 4 17.5v-2Zm2.5-1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2Zm6.5 1a2.5 2.5 0 0 1 2.5-2.5h2a2.5 2.5 0 0 1 2.5 2.5v2a2.5 2.5 0 0 1-2.5 2.5h-2a2.5 2.5 0 0 1-2.5-2.5v-2Zm2.5-1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2Z" />
           </svg>
         {:else}
           {icon}

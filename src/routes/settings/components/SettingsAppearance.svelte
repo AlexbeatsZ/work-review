@@ -154,7 +154,7 @@
               <div class="h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-transparent"></div>
               {t('common.processing')}
             {:else}
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4Zm0 1.5h12a.5.5 0 0 1 .5.5v5.88l-3.3-3.3a1.5 1.5 0 0 0-2.12 0l-4.59 4.6-1.5-1.5a1.5 1.5 0 0 0-2.12 0L3.5 11.06V5a.5.5 0 0 1 .5-.5Zm12 11H4a.5.5 0 0 1-.5-.5v-1.88l1.44-1.44a.5.5 0 0 1 .7 0l1.86 1.85a.75.75 0 0 0 1.06 0l4.94-4.94a.5.5 0 0 1 .71 0l3.3 3.3v1.11a.5.5 0 0 1-.5.5ZM6.5 6a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" /></svg>
               {t('settingsAppearance.chooseImage')}
             {/if}
             <input type="file" accept="image/*" class="hidden" on:change={handleBgFileSelect} disabled={bgUploading} />

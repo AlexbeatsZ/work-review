@@ -730,9 +730,8 @@
   <div class="page-header">
     <div class="page-title-group">
       <div class="page-title-badge">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 7h14M5 12h9M5 17h14" />
-          <circle cx="17" cy="12" r="2.5" stroke-width="1.8" />
+        <svg fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13a.75.75 0 0 0-.75.75v4.5c0 .2.08.39.22.53l3 3a.75.75 0 0 0 1.06-1.06L13.25 11.94V7.75A.75.75 0 0 0 12.5 7Z" />
         </svg>
       </div>
       <div class="page-title-copy">
@@ -758,8 +757,8 @@
         />
       {/key}
       <button class="page-control-btn-icon" on:click={loadTimeline} title={t('timeline.refreshTitle')}>
-        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <svg class="w-4 h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 2a8 8 0 1 0 7.75 6.02.75.75 0 0 0-1.45-.38A6.5 6.5 0 1 1 10 3.5c1.8 0 3.43.74 4.6 1.93L13 7h5V2l-1.87 1.87A7.97 7.97 0 0 0 10 2Z" />
         </svg>
       </button>
     </div>
@@ -797,15 +796,15 @@
           href="#/timeline/summary"
           class="page-control-btn timeline-summary-action"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3.5 2a.75.75 0 0 1 .75.75V15h11.25a.75.75 0 0 1 0 1.5H3.5A.75.75 0 0 1 2.75 15V2.75A.75.75 0 0 1 3.5 2Zm4.25 4.5a.75.75 0 0 1 .75.75v6a.75.75 0 0 1-1.5 0v-6a.75.75 0 0 1 .75-.75Zm3.5 2.5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5a.75.75 0 0 1 .75-.75Zm3.5-4a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0v-7.5a.75.75 0 0 1 .75-.75Z" />
           </svg>
           {t('timeline.periodSummary')}
           {#if hourlySummaries.length > 0}
             <span class="px-1.5 py-0.5 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full">{hourlySummaries.length}</span>
           {/if}
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M5.47 3.22a.75.75 0 0 0 0 1.06L9.19 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06l4.25-4.25a.75.75 0 0 0 0-1.06L6.53 3.22a.75.75 0 0 0-1.06 0Z" />
           </svg>
         </a>
       </div>
@@ -892,8 +891,8 @@
                 </p>
                 <div class="timeline-entry-tail timeline-entry-tail-compact">
                   <span class="timeline-entry-duration">{formatDuration(activity.duration)}</span>
-                  <svg class="timeline-entry-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  <svg class="timeline-entry-arrow" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M5.47 3.22a.75.75 0 0 0 0 1.06L9.19 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06l4.25-4.25a.75.75 0 0 0 0-1.06L6.53 3.22a.75.75 0 0 0-1.06 0Z" />
                   </svg>
                 </div>
               </div>
@@ -914,8 +913,8 @@
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-500"></div>
               {t('timeline.loadingMore')}
             {:else}
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4.22 7.47a.75.75 0 0 1 1.06 0L10 12.19l4.72-4.72a.75.75 0 1 1 1.06 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0L4.22 8.53a.75.75 0 0 1 0-1.06Z" />
               </svg>
               {t('timeline.loadMore')}
             {/if}
@@ -963,8 +962,8 @@
             </div>
           </div>
           <button class="btn btn-ghost" on:click={closeDetail}>
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L10.94 12l-6.72 6.72a.75.75 0 1 0 1.06 1.06L12 13.06l6.72 6.72a.75.75 0 1 0 1.06-1.06L13.06 12l6.72-6.72a.75.75 0 0 0-1.06-1.06L12 10.94 5.28 4.22Z" />
             </svg>
           </button>
         </div>

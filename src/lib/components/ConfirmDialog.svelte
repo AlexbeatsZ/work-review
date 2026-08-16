@@ -5,14 +5,17 @@
     info: {
       iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300',
       button: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+      path: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm0-13a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-1 5a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0V13H11a.75.75 0 0 1-.75-.75Z',
     },
     warning: {
       iconBg: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300',
       button: 'bg-amber-500 hover:bg-amber-600 text-white',
+      path: 'M12.98 2.37a1.75 1.75 0 0 0-2.96 0l-8.5 14.5A1.75 1.75 0 0 0 3 19.5h17a1.75 1.75 0 0 0 1.48-2.63l-8.5-14.5Zm-1.68 1.25a.25.25 0 0 1 .4 0l8.5 14.5a.25.25 0 0 1-.2.38H3a.25.25 0 0 1-.21-.38l8.5-14.5ZM12 8a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0v-4.5A.75.75 0 0 0 12 8Zm0 8a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z',
     },
     error: {
       iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-300',
       button: 'bg-red-500 hover:bg-red-600 text-white',
+      path: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm3.28-11.28a.75.75 0 0 0-1.06-1.06L12 9.94 9.78 7.72a.75.75 0 0 0-1.06 1.06L10.94 11l-2.22 2.22a.75.75 0 1 0 1.06 1.06L12 12.06l2.22 2.22a.75.75 0 0 0 1.06-1.06L13.06 11l2.22-2.28Z',
     },
   };
 
@@ -38,8 +41,8 @@
     >
       <div class="flex items-start gap-4">
         <div class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${tone.iconBg}`}>
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m0 3.75h.008v.008H12v-.008ZM10.29 3.86 1.82 18a2 2 0 0 0 1.72 3h16.92a2 2 0 0 0 1.72-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d={tone.path} />
           </svg>
         </div>
         <div class="min-w-0 flex-1">

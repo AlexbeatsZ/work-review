@@ -80,14 +80,13 @@
   <div class="page-header">
     <div class="page-title-group summary-page-title-group">
       <a href="/timeline" use:link class="summary-back-btn" aria-label={t('timeline.title')}>
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M7.78 3.22a.75.75 0 0 1 0 1.06L3.81 8.25H16.5a.75.75 0 0 1 0 1.5H3.81l3.97 3.97a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z" />
         </svg>
       </a>
       <div class="page-title-badge summary-title-badge">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 7h14M5 12h10M5 17h14" />
-          <circle cx="17" cy="12" r="2.3" stroke-width="1.8" />
+        <svg fill="currentColor" viewBox="0 0 24 24">
+          <path d="M4 2.75a.75.75 0 0 1 .75.75V18.5H19.5a.75.75 0 0 1 0 1.5H4A.75.75 0 0 1 3.25 19.25V3.5A.75.75 0 0 1 4 2.75ZM9 8a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0v-7.5A.75.75 0 0 1 9 8Zm4.5 3a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5a.75.75 0 0 1 .75-.75Zm4.5-6a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-1.5 0V5.75A.75.75 0 0 1 18 5Z" />
         </svg>
       </div>
       <div class="page-title-copy">
@@ -204,8 +203,8 @@
                 on:click={() => toggleExpand(summary.hour)}
               >
                 {expanded ? t('timelineSummary.collapse') : t('timelineSummary.expandFull')}
-                <svg class="w-3.5 h-3.5 transition-transform duration-200 {expanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                <svg class="w-3.5 h-3.5 transition-transform duration-200 {expanded ? 'rotate-180' : ''}" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M3.22 5.47a.75.75 0 0 1 1.06 0L8 9.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 6.53a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
             {/if}

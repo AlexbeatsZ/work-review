@@ -3,6 +3,63 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <path android:fillColor="#2563EB" android:pathData="M6,6h36v36h-36z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13,14h20v5h-20zM13,23h28v5h-28zM13,32h15v5h-15z" />
+    <!-- Dark Current Graphite Squircle Background -->
+    <path
+        android:fillColor="#0E1217"
+        android:pathData="M14,4h20c5.52,0 10,4.48 10,10v20c0,5.52 -4.48,10 -10,10H14c-5.52,0 -10,-4.48 -10,-10V14c0,-5.52 4.48,-10 10,-10z" />
+    <path
+        android:fillColor="#161D28"
+        android:pathData="M14,6h20c4.42,0 8,3.58 8,8v20c0,4.42 -3.58,8 -8,8H14c-4.42,0 -8,-3.58 -8,-8V14c0,-4.42 3.58,-8 8,-8z" />
+
+    <!-- Inactive Clock Track -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#252F3F"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M20,11.5 A12.5,12.5 0 1 0 32.5,24" />
+
+    <!-- Active Timeline Flow Arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7AA2F7"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M10.5,16 A12.5,12.5 0 0 1 29,33" />
+
+    <!-- Clock Center Pivot and Hands -->
+    <path
+        android:fillColor="#F3F6FA"
+        android:pathData="M20,22.5a1.5,1.5 0 1 0 0,3a1.5,1.5 0 1 0 0,-3z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F3F6FA"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M20,24 L20,15.5" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F3F6FA"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M20,24 L25,20.5" />
+
+    <!-- Review / Activity Stream Ledger Bars -->
+    <path
+        android:fillColor="#7AA2F7"
+        android:pathData="M24,15.5h14c1.38,0 2.5,1.12 2.5,2.5s-1.12,2.5 -2.5,2.5H24c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M24,21.5h11c1.38,0 2.5,1.12 2.5,2.5s-1.12,2.5 -2.5,2.5H24c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5z" />
+    <path
+        android:fillColor="#818CF8"
+        android:pathData="M24,27.5h13c1.38,0 2.5,1.12 2.5,2.5s-1.12,2.5 -2.5,2.5H24c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5z" />
+
+    <!-- Mint Recording Pulse Beacon -->
+    <path
+        android:fillColor="#43D6A2"
+        android:pathData="M10.5,14a2,2 0 1 0 0,4a2,2 0 1 0 0,-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10.5,15a1,1 0 1 0 0,2a1,1 0 1 0 0,-2z" />
 </vector>

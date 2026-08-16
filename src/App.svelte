@@ -228,36 +228,36 @@
     {#if platform && platform !== 'macos'}
     <!-- Windows 风格窗口控制按钮 (右上角) -->
     <div class="app-shell-window-controls absolute right-0 top-0 flex items-stretch h-7" style="-webkit-app-region: no-drag;">
-      <!-- Minimize -->
+      <!-- Minimize (Fluent subtract_16_regular) -->
       <button
         on:click={minimizeWindow}
         class="app-shell-window-btn"
         title="最小化"
       >
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
+        <svg fill="currentColor" viewBox="0 0 16 16">
+          <path d="M3 8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 8Z" />
         </svg>
       </button>
 
-      <!-- Maximize -->
+      <!-- Maximize (Fluent square_16_regular) -->
       <button
         on:click={maximizeWindow}
         class="app-shell-window-btn"
         title="最大化"
       >
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <rect x="4" y="4" width="16" height="16" rx="1" />
+        <svg fill="currentColor" viewBox="0 0 16 16">
+          <path d="M3.5 3A1.5 1.5 0 0 0 2 4.5v7A1.5 1.5 0 0 0 3.5 13h9a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 12.5 3h-9Zm-.5 1.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-7Z" />
         </svg>
       </button>
 
-      <!-- Close -->
+      <!-- Close (Fluent dismiss_16_regular) -->
       <button
         on:click={closeWindow}
         class="app-shell-window-btn app-shell-window-btn-close"
         title="关闭"
       >
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        <svg fill="currentColor" viewBox="0 0 16 16">
+          <path d="M3.47 3.47a.75.75 0 0 1 1.06 0L8 6.94l3.47-3.47a.75.75 0 1 1 1.06 1.06L9.06 8l3.47 3.47a.75.75 0 0 1-1.06 1.06L8 9.06l-3.47 3.47a.75.75 0 0 1-1.06-1.06L6.94 8 3.47 4.53a.75.75 0 0 1 0-1.06Z" />
         </svg>
       </button>
     </div>

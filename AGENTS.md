@@ -11,6 +11,7 @@
 - Android: native Kotlin/Jetpack Compose app with overview, timeline, settings, export, diagnostics, and a full-height blocked-app picker.
 - Android app identity resolution now combines package-manager labels, decoded launcher icons, known labels, and a readable package-derived fallback. The package name is only secondary context in the blocked-app sheet.
 - Desktop and Android use the Dark Current direction: cool graphite surfaces, blue-gray text, restrained blue signals, sans-serif typography, and dense content-first layouts. The rejected warm paper/brown/serif direction is retired.
+- App and UI icons upgraded to Microsoft Fluent System Icons (`microsoft/fluentui-system-icons`), matching Dark Current palette and vector assets across desktop, web, Android launcher, and system tray.
 - Design contract: [docs/design/cross-platform-interface.md](docs/design/cross-platform-interface.md).
 
 # Active Work
@@ -18,8 +19,8 @@
 - Completed: replace the rejected Work Ledger treatment with the cold-dark Dark Current desktop direction.
 - Completed: apply the same dark-only direction to Android navigation, overview, timeline, settings, and blocked-app management.
 - Completed: add resilient app identity resolution and icon rendering for Android.
-- Completed: run Android unit tests and APK assembly; run 22 focused desktop tests, Vite production build, Tauri release build, and visual QA on the actual release EXE at 1268 x 885.
-- No known incomplete work for the Dark Current redesign. A physical Android device was not attached for runtime visual QA.
+- Completed: overhaul application branding and in-app icons to Microsoft Fluent System Icons (`microsoft/fluentui-system-icons`), including multi-res PNGs/ICO/ICNS, Android vector launcher icon, window controls, sidebar navigation, timeline controls, summary, settings tabs, toast notifications, stats cards, and fallback monogram SVGs.
+- Completed: run Android unit tests and APK assembly; run focused desktop tests (`12/12` pass), Vite production build, and Tauri icon generator.
 
 # Build / Run / Test
 
