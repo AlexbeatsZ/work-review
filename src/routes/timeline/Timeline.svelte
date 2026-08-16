@@ -736,7 +736,7 @@
         </svg>
       </div>
       <div class="page-title-copy">
-        <span class="timeline-ledger-kicker">{isToday ? t('timeline.todayLabel') : selectedDate}</span>
+        <span class="timeline-signal-kicker">{isToday ? t('timeline.todayLabel') : selectedDate}</span>
         <h2>{t('timeline.title')}</h2>
         <p>
         {t('timeline.subtitle')}
@@ -1310,6 +1310,8 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    min-width: 0;
+    flex: 1 1 auto;
     flex-wrap: wrap;
     color: #6b7280;
     font-size: 0.92rem;
@@ -1320,6 +1322,8 @@
   }
 
   .timeline-summary-action {
+    flex: 0 0 auto;
+    white-space: nowrap;
     background: rgba(255, 250, 240, 0.74);
     border-color: rgba(217, 119, 6, 0.12);
   }
@@ -1382,7 +1386,7 @@
   }
 
   .timeline-entry + .timeline-entry {
-    margin-top: 0.4rem;
+    margin-top: 0.2rem;
   }
 
   .timeline-entry:hover {
@@ -1397,7 +1401,7 @@
     justify-content: flex-start;
     gap: 0.65rem;
     min-height: 100%;
-    padding-top: 0.95rem;
+    padding-top: 0.75rem;
   }
 
   .timeline-entry-time {
@@ -1466,9 +1470,9 @@
   .timeline-entry-card-compact {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.8rem 1rem;
+    gap: 0.65rem 0.85rem;
     align-items: center;
-    padding: 1rem 1.05rem;
+    padding: 0.72rem 0.85rem;
     background: rgba(255, 255, 255, 0.62);
     backdrop-filter: blur(8px);
   }
@@ -1693,11 +1697,9 @@
   }
 
   .timeline-entry-card-compact-grid {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'app app'
-      'title meta';
-    align-items: start;
+    grid-template-columns: minmax(9.5rem, 0.78fr) minmax(0, 1.35fr) auto;
+    grid-template-areas: 'app title meta';
+    align-items: center;
   }
 
   .timeline-entry-app-compact {
@@ -1711,7 +1713,17 @@
   .timeline-entry-tail-compact {
     grid-area: meta;
     justify-self: end;
-    align-self: end;
+    align-self: center;
+  }
+
+  .timeline-entry-app-compact .timeline-app-icon {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .timeline-entry-app-compact .timeline-app-icon-image {
+    width: 1.7rem;
+    height: 1.7rem;
   }
 
   .timeline-entry-duration {

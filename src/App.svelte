@@ -215,10 +215,7 @@
 </script>
 
 <div class="app-shell work-ledger-shell flex h-screen overflow-hidden relative {lowPowerMode ? 'lite-low-power' : ''}">
-  <div class="work-ledger-atmosphere pointer-events-none absolute inset-0 z-0 {lowPowerMode ? 'hidden' : ''}">
-    <div class="work-ledger-rule work-ledger-rule-top"></div>
-    <div class="work-ledger-rule work-ledger-rule-bottom"></div>
-  </div>
+  <div class="work-ledger-atmosphere pointer-events-none absolute inset-0 z-0 {lowPowerMode ? 'hidden' : ''}"></div>
   <!--
     全局顶部拖拽层 (Invisible Drag Layer)
     1. 覆盖在所有内容之上 (z-50)

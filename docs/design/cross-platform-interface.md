@@ -1,96 +1,95 @@
-# Work Ledger cross-platform interface
+# Dark Current cross-platform interface
 
 ## Product and audience
 
-Work Review is a private work-rhythm ledger for people who want to understand where their day went without turning the app into a surveillance dashboard. The interface's single job is to make recorded time readable and controllable.
+Work Review is a private activity stream for people who spend long periods at a computer and need to scan where their day went. The interface has one job: turn captured activity into a fast, legible sequence without feeling like a surveillance dashboard.
 
-The direction borrows Claude's calm, natural, content-first character: warm neutral surfaces, articulate typography, plain language, and restrained controls. It does not copy Anthropic logos, illustrations, exact layouts, or brand assets.
+The previous Work Ledger direction is retired. Its brown surfaces, paper metaphor, serif headings, and editorial ornament made a compact utility feel old and visually heavy. The product now uses a dark-only, cool-neutral visual system.
 
 ## Visual direction
 
 ### Palette
 
-- Paper `#F7F3EC`: main light canvas.
-- Ink `#292521`: primary text and high-contrast controls.
-- Ash `#69625B`: secondary copy.
-- Rule `#D9D0C5`: dividers and structural boundaries.
-- Copper `#C5663D`: the one strong accent, used for time markers and primary actions.
-- Sage `#65705C`: recording/healthy status.
+- Void `#080A0D`: window canvas and deepest background.
+- Graphite `#0E1217`: sidebar, window chrome, and quiet surfaces.
+- Slate `#141A22`: rows, controls, and raised content.
+- Edge `#252E3A`: structural borders and separators.
+- Frost `#F3F6FA`: primary text.
+- Signal `#7AA2F7`: current route, time position, focus, and primary actions.
 
-Dark mode uses the same material idea: roasted paper (`#201D1A`), warm ink (`#F3ECE2`), muted rule (`#49413A`), and slightly brighter copper (`#DF7E54`). No blue/indigo accents should remain in primary product surfaces.
+Supporting text uses blue-gray `#8A96A8`; recording health uses mint `#43D6A2`; destructive actions use coral `#FF7B72`. Brown, copper, cream, warm paper, and serif typography are prohibited.
 
 ### Type
 
-- Display/section titles: restrained serif stack (`Iowan Old Style`, `Palatino Linotype`, `Noto Serif SC`, platform serif).
-- Body/control copy: platform humanist sans (`Segoe UI Variable`, `PingFang SC`, `Noto Sans CJK SC`, platform sans).
-- Times, durations, and package names: monospaced utility stack (`SFMono-Regular`, `Cascadia Mono`, `Consolas`, platform monospace).
+- Page identity and body: platform UI sans (`Segoe UI Variable`, `PingFang SC`, `Noto Sans CJK SC`, platform sans).
+- Totals and section headings: the same UI family at a firmer weight; no display serif.
+- Times, durations, package names, and state codes: `Bahnschrift`, `Cascadia Mono`, `SFMono-Regular`, platform monospace.
 
-Serif is reserved for page identity and major totals. Dense lists and controls remain sans-serif.
+The hierarchy comes from weight, width, alignment, and space—not decorative font switching.
 
-### Signature: the chronicle spine
+### Signature: the signal track
 
-A thin copper time spine connects the product's meaning across platforms. On desktop it is the structural rail for daily entries; on Android it appears in the date navigator and timeline. Dots, labels, and durations attach to the rail because they encode real time, not as decoration.
+A thin blue signal track connects captured activity across desktop and Android. Its dots represent real session positions; the currently active or strongest point has a restrained halo. It is the only luminous element. No ambient blobs, fake paper rules, ornamental gradients, or unrelated glow effects are allowed.
 
-Motion is limited to recording status and a short entry reveal. Reduced-motion disables both.
+Motion is limited to the live recording pulse and a short row hover/press response. Reduced-motion disables the pulse and transitions.
 
 ## Desktop structure
 
 ```text
-┌──────── ledger index ────────┬──────────── daily sheet ───────────────────┐
-│ Work Review                  │ Timeline                         [date] [↻] │
-│ private work ledger          │ A readable account of the day             │
-│                              ├─────────────────────────────────────────────┤
-│ ● recording                  │ date stamp · record count · covered hours  │
-│                              │                                             │
-│ │ Timeline                   │ 09:42 ●  app + category   title   duration  │
-│   Settings                   │       │                                     │
-│                              │ 09:18 ●  app + category   title   duration  │
-│ locale                       │       │                                     │
-└──────────────────────────────┴─────────────────────────────────────────────┘
+┌──── command rail ────┬──────────────── activity stream ────────────────┐
+│ Work Review          │ Timeline                         date · refresh │
+│ ● Recording          │ Today · 18 sessions · 08:14—16:42             │
+│                      ├─────────────────────────────────────────────────┤
+│ ▌ Timeline           │ 16:32  ●  [icon] Application     08m           │
+│   Settings           │        │  Window or task title                  │
+│                      │ 16:08  ●  [icon] Application     21m           │
+│                      │        │  Window or task title                  │
+│ ZH                   │                                             │
+└──────────────────────┴─────────────────────────────────────────────────┘
 ```
 
-- The sidebar is a quiet index, not a floating card stack.
-- The main sheet owns scrolling; window chrome stays visually subordinate.
-- The daily summary is a ruled masthead, not a gradient KPI card.
-- Featured screenshots remain available but sit inside the same ledger rhythm.
-- Settings use a left category index and a single reading column; avoid nested glass cards.
+- The command rail is compact and visually quieter than the activity stream.
+- Window chrome merges with the canvas rather than appearing as a separate bar.
+- The page header is compact; the content starts near the top instead of presenting an oversized title.
+- The date summary is one low-profile status band, not a KPI or editorial masthead.
+- Activity rows are dense, flat, and separated by edges. Rounded containers are used only where grouping is necessary.
+- Settings use a compact category rail and a single graphite reading pane. Avoid nested cards.
 
 ## Android structure
 
 ```text
-┌ Work Review                         ● ┐
-│ 今日记录                               │
-│ 6 小时 24 分                         │
-│ ──‹── 8 月 16 日 ──›──                │
-│                                       │
-│ 使用排行                               │
-│ [icon] Claude            1h 42m       │
-│ [icon] Obsidian          1h 08m       │
-│                                       │
-├  总览     时间线      设置      状态  ┤
-└───────────────────────────────────────┘
+┌ WORK REVIEW                         ● REC ┐
+│ 今日活动                                     │
+│ 06:24                                      │
+│ ‹               8 月 16 日              ›  │
+├─────────────────────────────────────────────┤
+│ 应用排行                                     │
+│ [icon] Claude                         1:42  │
+│ [icon] Obsidian                       1:08  │
+│                                             │
+├  总览      时间线       设置       状态  ────┤
 ```
 
-- Use edge-to-edge Compose layout with safe insets and a warm paper canvas.
-- Bottom navigation has real icons and short Chinese labels; no initial-letter placeholders.
-- Overview prioritizes the total time and app identity.
-- Timeline rows always show icon + label; the package name is shown only where it aids debugging.
-- Settings are grouped as plain ledger sections with hairline rules.
-- Blocked apps open in a full-height sheet with search, icon + label rows, package name secondary, clear selected state, and a persistent Save action.
-- If an icon cannot be loaded, show a deterministic monogram tile. If a label cannot be loaded, use a readable package-derived name and keep the raw package below it.
+- The app is dark-only and edge-to-edge; it does not follow the device light theme.
+- Overview opens with a compact total-time block and immediately exposes useful rows.
+- Bottom navigation is flat with a top edge; selected state is color and weight, not a large pill.
+- Timeline rows show icon + readable label with time data aligned in a stable column.
+- Package names remain secondary and are shown only where identity/debugging benefits.
+- Settings use stacked graphite sections with subtle edges and direct labels.
+- Blocked apps open in a near-full-height dark sheet with search, icon + label, package secondary, a clear check state, and a persistent Save action.
 
 ## Interaction and accessibility contract
 
-- Minimum touch target: 44 px desktop controls, 48 dp Android controls.
-- Every icon-only control has a label/content description.
-- Keyboard focus is visible on desktop.
-- Text and controls meet WCAG AA contrast in both themes.
-- Empty states state what is missing and the next action.
-- Destructive data clearing stays visually distinct and requires existing confirmation behavior where present.
-- `prefers-reduced-motion` and Android system animation preferences are respected.
+- Minimum target: 44 px desktop and 48 dp Android.
+- Icon-only controls have labels/content descriptions.
+- Desktop focus uses a visible Signal outline.
+- Frost/blue-gray text maintains WCAG AA contrast against Void, Graphite, and Slate.
+- Empty and error states explain the next action plainly.
+- Destructive controls stay coral and retain existing confirmation behavior.
+- Reduced-motion and Android animation settings are respected.
 
 ## Non-regression boundaries
 
-- Desktop: preserve Tauri window controls, recording pause/resume, timeline loading/paging, summary route, activity details, category edits, settings save, locale switching, and dark mode.
-- Android: preserve Usage Access onboarding, background collection, session threshold, ignored packages, export directory/times, manual export, data clearing, and debug status.
+- Desktop: preserve Tauri window controls, recording pause/resume, timeline loading/paging, summary route, activity details, category edits, settings save, locale switching, and the always-dark runtime.
+- Android: preserve Usage Access onboarding, background collection, session threshold, ignored packages, application icon/name resolution, export directory/times, manual export, data clearing, and debug status.
 - Android application IDs and stored preference keys must not change.

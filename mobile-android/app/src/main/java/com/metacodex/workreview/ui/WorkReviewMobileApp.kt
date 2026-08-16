@@ -12,7 +12,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +76,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -116,39 +114,36 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val Paper = Color(0xFFF7F3EC)
-private val PaperRaised = Color(0xFFFFFCF7)
-private val Ink = Color(0xFF292521)
-private val Ash = Color(0xFF69625B)
-private val Rule = Color(0xFFD9D0C5)
-private val Copper = Color(0xFFC5663D)
-private val Sage = Color(0xFF65705C)
-private val RoastedPaper = Color(0xFF201D1A)
-private val RoastedRaised = Color(0xFF292521)
-private val WarmInk = Color(0xFFF3ECE2)
-private val WarmAsh = Color(0xFFBDB2A7)
-private val DarkRule = Color(0xFF49413A)
-private val BrightCopper = Color(0xFFDF7E54)
+private val Void = Color(0xFF080A0D)
+private val Graphite = Color(0xFF0E1217)
+private val Slate = Color(0xFF141A22)
+private val Edge = Color(0xFF252E3A)
+private val Frost = Color(0xFFF3F6FA)
+private val BlueGray = Color(0xFF8A96A8)
+private val Signal = Color(0xFF7AA2F7)
+private val SignalDeep = Color(0xFF17233A)
+private val Mint = Color(0xFF43D6A2)
 
 private val WorkReviewTypography = Typography(
     headlineLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontSize = 39.sp,
-        lineHeight = 43.sp,
-        fontWeight = FontWeight.Normal,
-        letterSpacing = (-0.8).sp
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 36.sp,
+        lineHeight = 40.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-1).sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontSize = 27.sp,
-        lineHeight = 32.sp,
-        fontWeight = FontWeight.Normal
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 25.sp,
+        lineHeight = 30.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.4).sp
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontSize = 21.sp,
-        lineHeight = 27.sp,
-        fontWeight = FontWeight.Medium
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 19.sp,
+        lineHeight = 25.sp,
+        fontWeight = FontWeight.SemiBold
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
@@ -186,48 +181,26 @@ private val WorkReviewTypography = Typography(
     )
 )
 
-private val LightColors = lightColorScheme(
-    primary = Copper,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFF1D8CA),
-    onPrimaryContainer = Color(0xFF542612),
-    secondary = Sage,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFDDE4D7),
-    onSecondaryContainer = Color(0xFF252D20),
-    background = Paper,
-    onBackground = Ink,
-    surface = PaperRaised,
-    onSurface = Ink,
-    surfaceVariant = Color(0xFFEDE6DD),
-    onSurfaceVariant = Ash,
-    outline = Rule,
-    outlineVariant = Color(0xFFE8E0D6),
-    error = Color(0xFFA43E32),
-    errorContainer = Color(0xFFF7DDD7),
-    onErrorContainer = Color(0xFF5C1712)
-)
-
 private val DarkColors = darkColorScheme(
-    primary = BrightCopper,
-    onPrimary = Color(0xFF3B1607),
-    primaryContainer = Color(0xFF663019),
-    onPrimaryContainer = Color(0xFFFFDCCB),
-    secondary = Color(0xFFA9B59F),
-    onSecondary = Color(0xFF263021),
-    secondaryContainer = Color(0xFF3C4936),
-    onSecondaryContainer = Color(0xFFDDE8D6),
-    background = RoastedPaper,
-    onBackground = WarmInk,
-    surface = RoastedRaised,
-    onSurface = WarmInk,
-    surfaceVariant = Color(0xFF37322E),
-    onSurfaceVariant = WarmAsh,
-    outline = DarkRule,
-    outlineVariant = Color(0xFF39332E),
-    error = Color(0xFFFFB4A8),
-    errorContainer = Color(0xFF6F251E),
-    onErrorContainer = Color(0xFFFFDAD4)
+    primary = Signal,
+    onPrimary = Color(0xFF071225),
+    primaryContainer = SignalDeep,
+    onPrimaryContainer = Color(0xFFDCE7FF),
+    secondary = Mint,
+    onSecondary = Color(0xFF032219),
+    secondaryContainer = Color(0xFF103027),
+    onSecondaryContainer = Color(0xFFC1F4E1),
+    background = Void,
+    onBackground = Frost,
+    surface = Graphite,
+    onSurface = Frost,
+    surfaceVariant = Slate,
+    onSurfaceVariant = BlueGray,
+    outline = Edge,
+    outlineVariant = Color(0xFF1C242E),
+    error = Color(0xFFFF7B72),
+    errorContainer = Color(0xFF3A1A1C),
+    onErrorContainer = Color(0xFFFFDAD7)
 )
 
 private data class MobileTab(val id: String, val label: String, val icon: ImageVector)
@@ -324,7 +297,7 @@ fun WorkReviewMobileApp(repository: WorkReviewRepository) {
 @Composable
 private fun WorkReviewTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
+        colorScheme = DarkColors,
         typography = WorkReviewTypography,
         content = content
     )
@@ -332,29 +305,27 @@ private fun WorkReviewTheme(content: @Composable () -> Unit) {
 
 @Composable
 private fun WorkReviewNavigation(selectedTab: String, onSelect: (String) -> Unit) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        modifier = Modifier.border(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant,
-            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
-        )
-    ) {
-        MobileTabs.forEach { tab ->
-            NavigationBarItem(
-                selected = selectedTab == tab.id,
-                onClick = { onSelect(tab.id) },
-                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                label = { Text(tab.label) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
+        ) {
+            MobileTabs.forEach { tab ->
+                NavigationBarItem(
+                    selected = selectedTab == tab.id,
+                    onClick = { onSelect(tab.id) },
+                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                    label = { Text(tab.label) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
-            )
+            }
         }
     }
 }
@@ -365,14 +336,14 @@ private fun PageMasthead(
     subtitle: String,
     isRecording: Boolean = true
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "WORK REVIEW",
+                text = "WORK REVIEW / ACTIVITY",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -548,7 +519,6 @@ private fun OverviewScreen(
                 }
                 AppUsageRow(
                     visual = visual,
-                    packageName = row.packageName,
                     duration = formatDurationCompact(row.totalDurationMs)
                 )
             }
@@ -560,8 +530,8 @@ private fun OverviewScreen(
 private fun TimeHero(total: Long, appCount: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
@@ -581,7 +551,7 @@ private fun TimeHero(total: Long, appCount: Int) {
 }
 
 @Composable
-private fun AppUsageRow(visual: AppVisual, packageName: String, duration: String) {
+private fun AppUsageRow(visual: AppVisual, duration: String) {
     Column {
         Row(
             modifier = Modifier
@@ -591,15 +561,8 @@ private fun AppUsageRow(visual: AppVisual, packageName: String, duration: String
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppMark(visual.label, visual.icon)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(visual.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    packageName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
             Text(
                 duration,
@@ -725,13 +688,6 @@ private fun TimelineEntry(session: AppSessionEntity, visual: AppVisual, onDelete
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    session.packageName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
             if (onDelete != null) {
                 IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
@@ -796,7 +752,7 @@ private fun SettingsScreen(
             .fillMaxSize()
             .padding(scaffoldPadding),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { PageMasthead("设置", "只保留影响记录、隐私和导出的选项") }
         if (status.isNotBlank()) item { StatusNote(status) }
@@ -1218,9 +1174,19 @@ private fun LedgerSection(
     supporting: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
-        SectionHeading(title, supporting)
-        content()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            SectionHeading(title, supporting)
+            content()
+        }
     }
 }
 
@@ -1242,7 +1208,8 @@ private fun EmptyLedger(title: String, supporting: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
