@@ -64,7 +64,7 @@
   },
   "productName": "Work Review",
   "mainBinaryName": "Work_Review",
-  "version": "1.0.48",
+  "version": "1.0.49",
   "identifier": "com.workreview.app",
   "plugins": {},
   "app": {
@@ -80,7 +80,7 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
-        "transparent": false,
+        "transparent": true,
         "alwaysOnTop": false,
         "dragDropEnabled": false,
         "useHttpsScheme": true

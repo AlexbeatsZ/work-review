@@ -19,10 +19,6 @@
     currentLocale;
     return t(key, params);
   };
-  $: sidebarTagSegments = translate('sidebar.tagline')
-    .split('·')
-    .map((item) => item.trim())
-    .filter(Boolean);
   const localeOptionsBase = [
     { value: 'zh-CN', label: 'ZH', fullLabelKey: 'sidebar.localeNames.zhCN' },
     { value: 'zh-TW', label: 'TW', fullLabelKey: 'sidebar.localeNames.zhTW' },
@@ -83,60 +79,7 @@
 <svelte:window on:click={handleWindowClick} on:keydown={handleWindowKeydown} />
 
 <div class="sidebar-editorial-shell h-full flex flex-col overflow-hidden">
-  <div class="sidebar-top">
-    <!-- Logo 区域 -->
-    <div class="sidebar-brand sidebar-brand-panel">
-      <div class="sidebar-brand-row flex items-center gap-3 min-w-0">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="sidebar-brand-mark w-10 h-10 overflow-hidden shrink-0">
-            <img src="/icons/256x256.png" alt="Work Review" class="w-full h-full object-cover" />
-          </div>
-          <div class="min-w-0">
-            <h1 class="sidebar-brand-title">Work Review</h1>
-            <p class="sidebar-brand-line" aria-label={translate('sidebar.tagline')}>
-              {#each sidebarTagSegments as segment, index}
-                <span class="sidebar-brand-segment">{segment}</span>
-                {#if index < sidebarTagSegments.length - 1}
-                  <span class="sidebar-brand-separator">·</span>
-                {/if}
-              {/each}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 录制状态 -->
-    <div class="sidebar-status sidebar-status-panel">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <span class="relative flex h-2.5 w-2.5">
-            {#if isRecording && !isPaused}
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            {:else}
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-300 dark:bg-slate-600"></span>
-            {/if}
-          </span>
-          <span class="text-[12px] font-semibold tracking-[0.08em] text-slate-500 dark:text-slate-400">
-            {translate('sidebar.recordingStatus')}
-          </span>
-        </div>
-        <button
-          on:click={toggleRecording}
-          class="mt-0.5 shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-full transition-all
-            {isPaused 
-              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300' 
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}"
-        >
-          {#if isPaused}{translate('sidebar.resume')}{:else}{translate('sidebar.pause')}{/if}
-        </button>
-      </div>
-    </div>
-  </div>
-
   <div class="sidebar-main">
-    <!-- 导航菜单 -->
     <nav class="sidebar-nav sidebar-nav-section">
       <ul class="sidebar-nav-list">
         {#each navItems as item}
@@ -173,14 +116,27 @@
       </ul>
     </nav>
 
-    <!-- 底部工具栏 -->
     <div class="sidebar-bottom sidebar-toolbelt">
+      <div class="sidebar-status sidebar-status-panel">
+        <div class="sidebar-status-copy">
+          <span class="sidebar-status-dot {isRecording && !isPaused ? 'sidebar-status-dot-live' : ''}" aria-hidden="true"></span>
+          <span>{translate('sidebar.recordingStatus')}</span>
+        </div>
+        <button
+          type="button"
+          on:click={toggleRecording}
+          class="sidebar-recording-action {isPaused ? 'sidebar-recording-action-resume' : ''}"
+        >
+          {#if isPaused}{translate('sidebar.resume')}{:else}{translate('sidebar.pause')}{/if}
+        </button>
+      </div>
+
       <div class="sidebar-footer w-full justify-between gap-y-2">
 
         <div class="relative" bind:this={localeMenuContainer}>
           <button
             type="button"
-            class="locale-switch inline-flex h-8 min-w-[54px] items-center justify-center gap-1.5 rounded-full border border-slate-200/80 bg-white/90 px-3 text-[11px] font-semibold tracking-[0.08em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] outline-none transition hover:border-slate-300 hover:text-slate-800 focus:ring-2 focus:ring-slate-300 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white dark:focus:ring-slate-600"
+            class="locale-switch"
             aria-label={translate('sidebar.localeButtonTitle')}
             aria-haspopup="menu"
             aria-expanded={localeMenuOpen}
@@ -195,19 +151,19 @@
 
           {#if localeMenuOpen}
             <div
-              class="absolute bottom-full left-0 mb-2 min-w-[148px] rounded-2xl border border-slate-200/80 bg-white/96 p-1.5 shadow-xl shadow-slate-900/12 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/96"
+              class="locale-menu absolute bottom-full left-0 mb-2 min-w-[156px]"
               role="menu"
             >
               {#each localeOptions as option}
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors {currentLocale === option.value ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'}"
+                  class="locale-menu-item {currentLocale === option.value ? 'locale-menu-item-active' : ''}"
                   role="menuitemradio"
                   aria-checked={currentLocale === option.value}
                   on:click={() => selectLocale(option.value)}
                 >
-                  <span class="font-semibold tracking-[0.08em] text-slate-500 dark:text-slate-400">{option.label}</span>
-                  <span class="text-slate-700 dark:text-slate-200">{option.fullLabel}</span>
+                  <span class="locale-menu-code">{option.label}</span>
+                  <span>{option.fullLabel}</span>
                 </button>
               {/each}
             </div>

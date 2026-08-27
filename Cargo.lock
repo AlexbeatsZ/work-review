@@ -7279,7 +7279,7 @@ dependencies = [
 
 [[package]]
 name = "work-review"
-version = "1.0.48"
+version = "1.0.49"
 dependencies = [
  "anyhow",
  "async-trait",

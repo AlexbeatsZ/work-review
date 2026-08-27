@@ -214,8 +214,7 @@
   });
 </script>
 
-<div class="app-shell work-ledger-shell flex h-screen overflow-hidden relative {lowPowerMode ? 'lite-low-power' : ''}">
-  <div class="work-ledger-atmosphere pointer-events-none absolute inset-0 z-0 {lowPowerMode ? 'hidden' : ''}"></div>
+<div class="app-shell winui-shell flex h-screen overflow-hidden relative {lowPowerMode ? 'lite-low-power' : ''}">
   <!--
     全局顶部拖拽层 (Invisible Drag Layer)
     1. 覆盖在所有内容之上 (z-50)
@@ -223,11 +222,15 @@
     3. 按钮区域排除拖动 (-webkit-app-region: no-drag)
   -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="app-shell-windowbar absolute top-0 left-0 w-full h-7 z-50" style="-webkit-app-region: drag;" on:mousedown={startDrag}>
+  <div class="app-shell-windowbar absolute top-0 left-0 w-full h-8 z-50" style="-webkit-app-region: drag;" on:mousedown={startDrag}>
+    <div class="app-shell-window-identity" aria-hidden="true">
+      <img src="/icons/256x256.png" alt="" />
+      <span>Work Review</span>
+    </div>
     <!-- 仅 Windows/Linux 平台显示自定义窗口控制按钮，macOS 使用原生控件 -->
     {#if platform && platform !== 'macos'}
     <!-- Windows 风格窗口控制按钮 (右上角) -->
-    <div class="app-shell-window-controls absolute right-0 top-0 flex items-stretch h-7" style="-webkit-app-region: no-drag;">
+    <div class="app-shell-window-controls absolute right-0 top-0 flex items-stretch h-8" style="-webkit-app-region: no-drag;">
       <!-- Minimize (Fluent subtract_16_regular) -->
       <button
         on:click={minimizeWindow}
@@ -264,7 +267,7 @@
     {/if}
   </div>
 
-  <div class="app-shell-stage relative z-10 flex-1 grid grid-cols-[13.5rem_minmax(0,1fr)] gap-3 m-2 {platform !== 'macos' ? 'pt-7' : 'pt-2'}">
+  <div class="app-shell-stage relative z-10 flex-1 grid grid-cols-[15rem_minmax(0,1fr)] {platform !== 'macos' ? 'pt-8' : 'pt-2'}">
     <!-- 左侧边栏 -->
     <aside class="app-shell-sidebar-frame min-h-0">
       <div class="app-shell-sidebar h-full flex flex-col overflow-hidden">

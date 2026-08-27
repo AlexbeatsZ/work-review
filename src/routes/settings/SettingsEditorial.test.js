@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('设置页应接入编辑部风格壳层并强化保存操作区', async () => {
+test('设置页应接入 WinUI Pivot 与分组设置面板', async () => {
   const [settingsSource, appCssSource] = await Promise.all([
     readFile(new URL('./Settings.svelte', import.meta.url), 'utf8'),
     readFile(new URL('../../app.css', import.meta.url), 'utf8'),
@@ -13,7 +13,6 @@ test('设置页应接入编辑部风格壳层并强化保存操作区', async ()
   assert.match(settingsSource, /settings-stage-layout/);
   assert.match(settingsSource, /settings-tab-rail/);
   assert.match(settingsSource, /settings-stage-shell/);
-  assert.match(settingsSource, /settings-ai-shell/);
   assert.match(settingsSource, /settings-save-dock/);
   assert.doesNotMatch(settingsSource, /<div class="page-card">[\s\S]*<SettingsAI/);
   assert.doesNotMatch(settingsSource, /settings-summary-grid/);
@@ -29,8 +28,8 @@ test('设置页应接入编辑部风格壳层并强化保存操作区', async ()
   assert.match(appCssSource, /\.settings-stage-layout/);
   assert.match(appCssSource, /\.settings-tab-rail/);
   assert.match(appCssSource, /\.settings-stage-shell/);
-  assert.match(appCssSource, /\.settings-ai-shell/);
   assert.match(appCssSource, /\.settings-save-dock/);
+  assert.match(appCssSource, /\.winui-shell \.settings-tab-rail[\s\S]*flex-direction:\s*row/);
   assert.doesNotMatch(appCssSource, /\.settings-summary-grid/);
   assert.doesNotMatch(appCssSource, /\.settings-summary-toolbar/);
   assert.doesNotMatch(appCssSource, /\.settings-summary-manager/);

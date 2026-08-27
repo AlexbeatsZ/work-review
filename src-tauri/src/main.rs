@@ -89,6 +89,55 @@ pub(crate) fn build_windows_window_icon() -> Option<tauri::image::Image<'static>
     }
 }
 
+#[cfg(target_os = "windows")]
+fn configure_windows_backdrop(window: &tauri::WebviewWindow) {
+    use std::mem::size_of;
+    use tauri::utils::config::Color;
+    use winapi::ctypes::c_void;
+    use winapi::shared::minwindef::DWORD;
+    use winapi::shared::windef::HWND;
+    use winapi::um::dwmapi::DwmSetWindowAttribute;
+
+    // Windows 11 DWM attributes used by WinUI 3 for a dark Mica main window.
+    const DWMWA_USE_IMMERSIVE_DARK_MODE: DWORD = 20;
+    const DWMWA_WINDOW_CORNER_PREFERENCE: DWORD = 33;
+    const DWMWA_SYSTEMBACKDROP_TYPE: DWORD = 38;
+    const DWMWCP_ROUND: i32 = 2;
+    const DWMSBT_MAINWINDOW: i32 = 2;
+
+    let Ok(hwnd) = window.hwnd() else {
+        log::warn!("无法取得 Windows 主窗口句柄，使用纯色 WinUI 背景");
+        return;
+    };
+    let raw_hwnd = hwnd.0 as HWND;
+
+    fn set_dwm_attribute<T>(hwnd: HWND, attribute: DWORD, value: &T) -> bool {
+        let result = unsafe {
+            DwmSetWindowAttribute(
+                hwnd,
+                attribute,
+                value as *const T as *const c_void,
+                size_of::<T>() as DWORD,
+            )
+        };
+        result >= 0
+    }
+
+    let dark_mode: i32 = 1;
+    let dark_mode_applied = set_dwm_attribute(raw_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark_mode);
+    let corners_applied =
+        set_dwm_attribute(raw_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &DWMWCP_ROUND);
+    let mica_applied = set_dwm_attribute(raw_hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &DWMSBT_MAINWINDOW);
+
+    if !(dark_mode_applied && corners_applied && mica_applied) {
+        log::warn!("部分 Windows 11 DWM 外观属性不可用，继续使用 WinUI 深色回退层");
+    }
+
+    if let Err(error) = window.set_background_color(Some(Color(0, 0, 0, 0))) {
+        log::warn!("设置透明 WebView 背景失败，继续使用 WinUI 深色回退层: {error}");
+    }
+}
+
 fn effective_dock_visibility(hide_dock_icon: bool, has_main_window: bool) -> bool {
     !hide_dock_icon && has_main_window
 }
@@ -109,10 +158,14 @@ pub(crate) fn sync_effective_dock_visibility(app: &AppHandle) {
 
 pub(crate) fn configure_main_window(_window: &tauri::WebviewWindow) {
     #[cfg(target_os = "windows")]
-    if let Some(icon) = build_windows_window_icon() {
-        if let Err(e) = _window.set_icon(icon) {
-            log::warn!("设置 Windows 主窗口图标失败，继续使用默认图标: {e}");
+    {
+        if let Some(icon) = build_windows_window_icon() {
+            if let Err(e) = _window.set_icon(icon) {
+                log::warn!("设置 Windows 主窗口图标失败，继续使用默认图标: {e}");
+            }
         }
+
+        configure_windows_backdrop(_window);
     }
 
     #[cfg(target_os = "macos")]

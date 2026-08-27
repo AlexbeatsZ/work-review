@@ -2959,3 +2959,865 @@
     --timeline-anchor-width: 4.7rem;
   }
 }
+
+/* Windows 11 / WinUI desktop surface.
+   The DWM window owns the Mica backdrop; the web layer supplies WinUI controls and fallbacks. */
+html,
+body,
+#app {
+  background: transparent !important;
+}
+
+.winui-shell {
+  --win-mica-fallback: #202020;
+  --win-pane: rgba(44, 44, 44, 0.82);
+  --win-layer: rgba(45, 45, 45, 0.92);
+  --win-layer-alt: rgba(50, 50, 50, 0.88);
+  --win-control: rgba(255, 255, 255, 0.0605);
+  --win-control-hover: rgba(255, 255, 255, 0.0837);
+  --win-control-pressed: rgba(255, 255, 255, 0.0326);
+  --win-stroke: rgba(255, 255, 255, 0.0837);
+  --win-stroke-strong: rgba(255, 255, 255, 0.14);
+  --win-text: #ffffff;
+  --win-text-secondary: #d1d1d1;
+  --win-text-tertiary: #9d9d9d;
+  --win-accent: #60cdff;
+  --win-accent-text: #99ebff;
+  --win-success: #6ccb5f;
+  --win-danger: #ff99a4;
+  --win-radius-control: 4px;
+  --win-radius-layer: 8px;
+  --win-shadow-flyout: 0 8px 18px rgba(0, 0, 0, 0.32), 0 2px 5px rgba(0, 0, 0, 0.22);
+  color: var(--win-text);
+  background: transparent;
+  font-family: "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.winui-shell.lite-low-power {
+  background: transparent;
+}
+
+.winui-shell .app-shell-windowbar,
+.dark .winui-shell .app-shell-windowbar {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  color: var(--win-text-secondary);
+  background: rgba(32, 32, 32, 0.56);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.winui-shell .app-shell-window-identity {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  gap: 0.5rem;
+  padding-left: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  user-select: none;
+}
+
+.winui-shell .app-shell-window-identity img {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 3px;
+}
+
+.winui-shell .app-shell-window-controls {
+  height: 2rem;
+  border: 0;
+  background: transparent;
+}
+
+.winui-shell .app-shell-window-btn {
+  width: 2.875rem;
+  height: 2rem;
+  color: var(--win-text-secondary);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transition: background-color 80ms linear, color 80ms linear;
+}
+
+.winui-shell .app-shell-window-btn svg {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.winui-shell .app-shell-window-btn:hover {
+  color: var(--win-text);
+  background: rgba(255, 255, 255, 0.0837);
+}
+
+.winui-shell .app-shell-window-btn:active {
+  background: rgba(255, 255, 255, 0.0326);
+}
+
+.winui-shell .app-shell-window-btn-close:hover {
+  color: #ffffff;
+  background: #c42b1c;
+}
+
+.winui-shell .app-shell-stage,
+.lite-low-power.winui-shell .app-shell-stage {
+  margin: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  gap: 0;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  background: transparent;
+}
+
+.winui-shell .app-shell-sidebar-frame,
+.winui-shell .app-shell-main-frame,
+.lite-low-power.winui-shell .app-shell-sidebar-frame,
+.lite-low-power.winui-shell .app-shell-main-frame {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.winui-shell .app-shell-sidebar-frame,
+.lite-low-power.winui-shell .app-shell-sidebar-frame {
+  background: var(--win-pane);
+  border-right: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.winui-shell .app-shell-main-frame,
+.lite-low-power.winui-shell .app-shell-main-frame {
+  background: rgba(32, 32, 32, 0.74);
+}
+
+.winui-shell .app-shell-sidebar,
+.winui-shell .app-shell-main,
+.winui-shell .sidebar-editorial-shell,
+.lite-low-power.winui-shell .app-shell-sidebar,
+.lite-low-power.winui-shell .app-shell-main {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.winui-shell .app-shell-main-scroll {
+  scrollbar-gutter: stable;
+}
+
+.winui-shell ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.winui-shell ::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+  border-radius: 999px;
+}
+
+.winui-shell ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.34);
+  background-clip: padding-box;
+}
+
+.winui-shell .sidebar-main {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0.75rem 0.5rem 0.5rem;
+}
+
+.winui-shell .sidebar-nav-section {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.winui-shell .sidebar-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.winui-shell .sidebar-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--win-radius-control);
+  color: var(--win-text-secondary);
+  background: transparent;
+  transition: background-color 80ms linear, color 80ms linear;
+}
+
+.winui-shell .sidebar-nav-item:hover {
+  color: var(--win-text);
+  background: var(--win-control-hover);
+  transform: none;
+}
+
+.winui-shell .sidebar-nav-item:active {
+  background: var(--win-control-pressed);
+}
+
+.winui-shell .sidebar-nav-item-active {
+  color: var(--win-text);
+  background: var(--win-control);
+  border-color: rgba(255, 255, 255, 0.025);
+  box-shadow: none;
+}
+
+.winui-shell .sidebar-nav-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.winui-shell .sidebar-nav-icon,
+.winui-shell .sidebar-nav-item-active .sidebar-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  color: currentColor !important;
+}
+
+.winui-shell .sidebar-nav-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.winui-shell .sidebar-nav-label,
+.winui-shell .sidebar-nav-item-active .sidebar-nav-label {
+  overflow: hidden;
+  color: currentColor;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.winui-shell .sidebar-nav-rail {
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  width: 3px;
+  height: 1rem;
+  border-radius: 3px;
+  background: var(--win-accent);
+  box-shadow: none;
+  transform: translateY(-50%);
+}
+
+.winui-shell .sidebar-toolbelt {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.winui-shell .sidebar-status-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--win-stroke);
+  border-radius: var(--win-radius-layer);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+}
+
+.winui-shell .sidebar-status-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--win-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.winui-shell .sidebar-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--win-text-tertiary);
+}
+
+.winui-shell .sidebar-status-dot-live {
+  background: var(--win-success);
+  box-shadow: 0 0 0 3px rgba(108, 203, 95, 0.12);
+}
+
+.winui-shell .sidebar-recording-action {
+  min-width: 3.25rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  color: var(--win-text-secondary);
+  font-size: 0.75rem;
+  border: 1px solid var(--win-stroke);
+  border-bottom-color: rgba(255, 255, 255, 0.18);
+  border-radius: var(--win-radius-control);
+  background: var(--win-control);
+}
+
+.winui-shell .sidebar-recording-action:hover {
+  color: var(--win-text);
+  background: var(--win-control-hover);
+}
+
+.winui-shell .sidebar-recording-action-resume {
+  color: #003e4a;
+  border-color: transparent;
+  background: var(--win-accent);
+}
+
+.winui-shell .sidebar-footer {
+  display: flex;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.winui-shell .locale-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 3.5rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  color: var(--win-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  border-radius: var(--win-radius-control);
+  background: transparent;
+  box-shadow: none;
+}
+
+.winui-shell .locale-switch:hover {
+  color: var(--win-text);
+  background: var(--win-control-hover);
+}
+
+.winui-shell .locale-menu,
+.winui-shell .localized-date-picker__popover {
+  padding: 0.25rem;
+  color: var(--win-text);
+  border: 1px solid var(--win-stroke-strong);
+  border-radius: var(--win-radius-layer);
+  background: #2c2c2c;
+  box-shadow: var(--win-shadow-flyout);
+}
+
+.winui-shell .locale-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  color: var(--win-text-secondary);
+  font-size: 0.75rem;
+  text-align: left;
+  border-radius: var(--win-radius-control);
+}
+
+.winui-shell .locale-menu-item:hover,
+.winui-shell .locale-menu-item-active {
+  color: var(--win-text);
+  background: var(--win-control-hover);
+}
+
+.winui-shell .locale-menu-code {
+  width: 1.5rem;
+  color: var(--win-text-tertiary);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.6875rem;
+}
+
+.winui-shell .page-shell,
+.lite-low-power.winui-shell .page-shell {
+  width: min(100%, 74rem);
+  margin-inline: auto;
+  padding: clamp(1.5rem, 2.5vw, 2.25rem);
+  animation: none;
+}
+
+.winui-shell .page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0;
+  border: 0;
+}
+
+.winui-shell .page-title-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.winui-shell .page-title-badge {
+  display: none;
+}
+
+.winui-shell .page-title-copy h2 {
+  margin: 0;
+  color: var(--win-text);
+  font-family: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 2.25rem;
+  letter-spacing: -0.015em;
+}
+
+.winui-shell .page-title-copy p {
+  margin-top: 0.125rem;
+  color: var(--win-text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.winui-shell .timeline-signal-kicker {
+  display: block;
+  margin-bottom: 0.125rem;
+  color: var(--win-text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.winui-shell .page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.winui-shell .page-control-input,
+.winui-shell .page-control-btn,
+.winui-shell .page-control-btn-icon,
+.winui-shell .control-input,
+.winui-shell .control-inline,
+.winui-shell .settings-segment-base,
+.winui-shell .settings-stage-shell :where(input, select, textarea) {
+  min-height: 2.25rem;
+  color: var(--win-text);
+  border: 1px solid var(--win-stroke);
+  border-bottom-color: rgba(255, 255, 255, 0.18);
+  border-radius: var(--win-radius-control);
+  background: var(--win-control);
+  box-shadow: none;
+}
+
+.winui-shell .page-control-btn,
+.winui-shell .page-control-btn-icon {
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.winui-shell .page-control-btn-icon {
+  width: 2.25rem;
+  padding: 0;
+}
+
+.winui-shell .page-control-btn:hover,
+.winui-shell .page-control-btn-icon:hover,
+.winui-shell .page-control-input:hover {
+  background: var(--win-control-hover);
+}
+
+.winui-shell :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--win-accent);
+  outline-offset: 2px;
+}
+
+.winui-shell .page-action-brand,
+.winui-shell .settings-action-primary {
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  color: #003e4a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--win-radius-control);
+  background: var(--win-accent);
+  box-shadow: none;
+}
+
+.winui-shell .page-action-brand:hover,
+.winui-shell .settings-action-primary:hover {
+  filter: brightness(1.06);
+}
+
+.winui-shell .page-card,
+.winui-shell .page-card-soft,
+.winui-shell .card,
+.winui-shell .settings-card,
+.winui-shell .settings-row {
+  color: var(--win-text);
+  border-color: var(--win-stroke);
+  border-radius: var(--win-radius-layer);
+  background: var(--win-layer);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.winui-shell .timeline-editorial-board {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--win-stroke);
+  border-radius: var(--win-radius-layer);
+  background: var(--win-layer);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.winui-shell .timeline-editorial-board::before {
+  display: none;
+}
+
+.winui-shell .timeline-summary-strip {
+  min-width: 0;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--win-stroke);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.winui-shell .timeline-summary-copy {
+  min-width: 0;
+  color: var(--win-text-secondary);
+  font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+.winui-shell .timeline-summary-divider {
+  color: var(--win-text-tertiary);
+}
+
+.winui-shell .timeline-summary-action {
+  flex: 0 0 auto;
+  color: var(--win-text-secondary);
+  white-space: nowrap;
+  border-color: transparent;
+  background: transparent;
+}
+
+.winui-shell .timeline-summary-action:hover {
+  color: var(--win-text);
+  background: var(--win-control-hover);
+}
+
+.winui-shell .timeline-editorial-shell {
+  padding: 0.375rem 0.5rem 0.5rem;
+}
+
+.winui-shell .timeline-rail {
+  width: 2px;
+  background: linear-gradient(180deg, var(--win-accent), rgba(96, 205, 255, 0.12));
+  box-shadow: none;
+}
+
+.winui-shell .timeline-entry {
+  min-height: 3.5rem;
+  border-radius: var(--win-radius-control);
+}
+
+.winui-shell .timeline-entry:hover {
+  transform: none;
+  filter: none;
+}
+
+.winui-shell .timeline-entry-time {
+  color: var(--win-text-tertiary);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.6875rem;
+}
+
+.winui-shell .timeline-entry-marker,
+.winui-shell .timeline-entry-marker-featured {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--win-accent);
+  box-shadow: 0 0 0 4px var(--win-layer), 0 0 0 5px rgba(96, 205, 255, 0.34);
+}
+
+.winui-shell .timeline-entry:hover .timeline-entry-marker,
+.winui-shell .timeline-entry:focus-visible .timeline-entry-marker {
+  box-shadow: 0 0 0 4px var(--win-layer), 0 0 0 6px rgba(96, 205, 255, 0.28);
+}
+
+.winui-shell .timeline-entry-card,
+.winui-shell .timeline-entry-card-compact,
+.winui-shell .timeline-entry-card-featured {
+  border: 1px solid transparent;
+  border-radius: var(--win-radius-control);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.winui-shell .timeline-entry:hover .timeline-entry-card,
+.winui-shell .timeline-entry:focus-visible .timeline-entry-card {
+  border-color: rgba(255, 255, 255, 0.035);
+  background: var(--win-control-hover);
+  box-shadow: none;
+}
+
+.winui-shell .timeline-featured-image,
+.winui-shell .timeline-app-icon {
+  border-radius: var(--win-radius-control);
+}
+
+.winui-shell .timeline-entry-app-name,
+.winui-shell .timeline-entry-title {
+  color: var(--win-text);
+}
+
+.winui-shell .timeline-entry-title-compact,
+.winui-shell .timeline-entry-url,
+.winui-shell .timeline-entry-tail {
+  color: var(--win-text-secondary);
+}
+
+.winui-shell .timeline-entry-category-pill,
+.winui-shell .timeline-entry-duration-chip {
+  color: var(--win-text-secondary);
+  border-color: var(--win-stroke);
+  border-radius: var(--win-radius-control);
+  background: var(--win-control);
+}
+
+.winui-shell .timeline-entry-duration,
+.winui-shell .timeline-entry-duration-chip {
+  color: var(--win-text-secondary);
+  font-family: "Cascadia Mono", Consolas, monospace;
+}
+
+.winui-shell .timeline-load-more-btn {
+  min-height: 2.25rem;
+  color: var(--win-text-secondary);
+  border-color: var(--win-stroke);
+  border-radius: var(--win-radius-control);
+  background: var(--win-control);
+}
+
+.winui-shell .summary-page-shell .summary-back-btn,
+.winui-shell .summary-page-shell .summary-lite-card,
+.winui-shell .summary-page-shell .summary-band-card,
+.winui-shell .summary-page-shell .summary-state-card {
+  color: var(--win-text);
+  border-color: var(--win-stroke);
+  border-radius: var(--win-radius-layer);
+  background: var(--win-layer);
+  box-shadow: none;
+}
+
+.winui-shell .summary-page-shell .summary-editorial-shell::before {
+  width: 2px;
+  background: var(--win-accent);
+}
+
+.winui-shell .summary-page-shell .summary-band-anchor::after {
+  background: var(--win-accent);
+  box-shadow: 0 0 0 4px rgba(32, 32, 32, 0.92), 0 0 0 5px rgba(96, 205, 255, 0.34);
+}
+
+.winui-shell .settings-editorial-shell .page-header {
+  position: static;
+  margin-bottom: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.winui-shell .settings-editorial-board,
+.winui-shell .settings-stage-layout,
+.winui-shell .settings-stage-shell {
+  background: transparent;
+}
+
+.winui-shell .settings-stage-layout {
+  display: block;
+}
+
+.winui-shell .settings-tab-rail {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 0.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--win-stroke);
+  border-radius: var(--win-radius-layer);
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: none;
+}
+
+.winui-shell .settings-tab-rail-item {
+  display: inline-flex;
+  width: auto;
+  min-width: max-content;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  gap: 0.5rem;
+  color: var(--win-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  border: 1px solid transparent;
+  border-radius: var(--win-radius-control);
+  background: transparent;
+}
+
+.winui-shell .settings-tab-rail-item:hover {
+  color: var(--win-text);
+  background: var(--win-control-hover);
+  transform: none;
+}
+
+.winui-shell .settings-tab-rail-item-active {
+  color: var(--win-text);
+  border-color: rgba(255, 255, 255, 0.025);
+  background: var(--win-control);
+  box-shadow: inset 0 -2px 0 var(--win-accent);
+}
+
+.winui-shell .settings-tab-rail-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: currentColor;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.winui-shell .settings-stage-shell {
+  margin-top: 0.75rem;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.winui-shell .settings-card {
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--win-stroke);
+  border-radius: var(--win-radius-layer);
+  background: var(--win-layer);
+}
+
+.winui-shell .settings-card-title {
+  margin-bottom: 0.75rem;
+  color: var(--win-text);
+  font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.winui-shell .settings-text,
+.winui-shell .settings-label {
+  color: var(--win-text);
+}
+
+.winui-shell .settings-muted,
+.winui-shell .settings-subtle,
+.winui-shell .settings-note {
+  color: var(--win-text-secondary);
+}
+
+.winui-shell .settings-row {
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--win-stroke);
+  border-radius: var(--win-radius-control);
+  background: var(--win-layer-alt);
+  box-shadow: none;
+}
+
+.winui-shell .settings-segment-active,
+.winui-shell .settings-chip-button-active,
+.winui-shell .switch-track.bg-primary-500 {
+  color: #003e4a;
+  background: var(--win-accent);
+  box-shadow: none;
+}
+
+.winui-shell .settings-save-dock {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.winui-shell .settings-value,
+.winui-shell .settings-link-action {
+  color: var(--win-accent-text);
+}
+
+.winui-shell .page-banner-error {
+  color: var(--win-danger);
+  border-color: rgba(255, 153, 164, 0.28);
+  border-radius: var(--win-radius-layer);
+  background: rgba(68, 26, 31, 0.88);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winui-shell *,
+  .winui-shell *::before,
+  .winui-shell *::after {
+    scroll-behavior: auto;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .winui-shell .app-shell-stage,
+  .lite-low-power.winui-shell .app-shell-stage {
+    grid-template-columns: 12.5rem minmax(0, 1fr);
+  }
+
+  .winui-shell .page-shell,
+  .lite-low-power.winui-shell .page-shell {
+    padding: 1.5rem;
+  }
+}

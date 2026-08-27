@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('应用壳层应保留左右两张主卡片，并将 stage 退回为纯布局容器', async () => {
+test('应用壳层应使用原生窗口底板与 NavigationView 式左右结构', async () => {
   const [appSource, appCssSource] = await Promise.all([
     readFile(new URL('./App.svelte', import.meta.url), 'utf8'),
     readFile(new URL('./app.css', import.meta.url), 'utf8'),
@@ -19,16 +19,17 @@ test('应用壳层应保留左右两张主卡片，并将 stage 退回为纯布�
   assert.match(appCssSource, /\.app-shell-sidebar-frame\b/);
   assert.match(appCssSource, /\.app-shell-main-frame\b/);
   assert.match(appCssSource, /\.app-shell-windowbar\b/);
-  assert.match(appCssSource, /\.app-shell-stage\s*\{[\s\S]*background:\s*transparent;/);
-  assert.match(appCssSource, /\.app-shell-stage\s*\{[\s\S]*border:\s*none;/);
-  assert.match(appCssSource, /\.app-shell-stage\s*\{[\s\S]*box-shadow:\s*none;/);
+  assert.match(appSource, /winui-shell/);
+  assert.match(appCssSource, /\.winui-shell \.app-shell-stage/);
+  assert.match(appCssSource, /grid-template-columns:\s*15rem minmax\(0, 1fr\)/);
+  assert.match(appCssSource, /\.winui-shell \.app-shell-sidebar-frame[\s\S]*border-right:/);
 });
 
-test('主导航字号应高于设置内导航，形成稳定层级', async () => {
+test('主导航与设置 Pivot 使用 WinUI 紧凑字号层级', async () => {
   const appCssSource = await readFile(new URL('./app.css', import.meta.url), 'utf8');
 
-  assert.match(appCssSource, /\.sidebar-nav-label\s*\{[\s\S]*font-size:\s*0\.98rem;/);
-  assert.match(appCssSource, /\.settings-tab-rail-item\s*\{[\s\S]*font-size:\s*0\.92rem;/);
+  assert.match(appCssSource, /\.winui-shell \.sidebar-nav-label[\s\S]*font-size:\s*0\.875rem;/);
+  assert.match(appCssSource, /\.winui-shell \.settings-tab-rail-item[\s\S]*font-size:\s*0\.8125rem;/);
 });
 
 test('统一底板结构下不应继续保留旧的主内容外壳伪元素修补逻辑', async () => {
@@ -44,7 +45,7 @@ test('自定义窗口栏存在时，统一底板本身应整体下移，侧栏�
 
   assert.match(
     appSource,
-    /app-shell-stage[\s\S]*\{platform !== 'macos' \? 'pt-7' : 'pt-2'\}/
+    /app-shell-stage[\s\S]*\{platform !== 'macos' \? 'pt-8' : 'pt-2'\}/
   );
   assert.doesNotMatch(
     appSource,
@@ -56,15 +57,12 @@ test('自定义窗口栏存在时，统一底板本身应整体下移，侧栏�
   );
 });
 
-test('统一底板结构下，卡片感应集中在 frame 层，内层容器不再重复叠加厚重背景与阴影', async () => {
+test('原生底板只在侧栏与内容层建立分区，不叠加玻璃卡片', async () => {
   const appCssSource = await readFile(new URL('./app.css', import.meta.url), 'utf8');
 
-  assert.match(appCssSource, /\.app-shell-sidebar-frame[\s\S]*background:/);
-  assert.match(appCssSource, /\.app-shell-main-frame[\s\S]*background:/);
-  assert.match(appCssSource, /\.app-shell-sidebar\s*\{[\s\S]*background:\s*transparent;/);
-  assert.match(appCssSource, /\.app-shell-sidebar\s*\{[\s\S]*box-shadow:\s*none;/);
-  assert.match(appCssSource, /\.app-shell-main\s*\{[\s\S]*background:\s*transparent;/);
-  assert.match(appCssSource, /\.app-shell-main\s*\{[\s\S]*box-shadow:\s*none;/);
-  assert.match(appCssSource, /\.sidebar-editorial-shell\s*\{[\s\S]*background:\s*transparent;/);
+  assert.match(appCssSource, /\.winui-shell \.app-shell-sidebar-frame[\s\S]*background:\s*var\(--win-pane\)/);
+  assert.match(appCssSource, /\.winui-shell \.app-shell-main-frame[\s\S]*background:\s*rgba\(32, 32, 32, 0\.74\)/);
+  assert.match(appCssSource, /\.winui-shell \.app-shell-sidebar,[\s\S]*background:\s*transparent;/);
+  assert.match(appCssSource, /\.winui-shell \.app-shell-sidebar,[\s\S]*box-shadow:\s*none;/);
   assert.doesNotMatch(appCssSource, /\.sidebar-editorial-shell::before/);
 });

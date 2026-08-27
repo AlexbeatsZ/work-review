@@ -1975,6 +1975,223 @@
     background: var(--editorial-surface-subtle);
   }
 
+  /* The desktop shell uses WinUI's compact grouped-list treatment. Keep these
+     overrides beside the component so Svelte's scoped rules cannot revive the
+     retired editorial cards after the global Fluent tokens are applied. */
+  :global(.winui-shell) .timeline-editorial-board {
+    border: 1px solid var(--win-stroke);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--win-layer) 88%, transparent);
+    box-shadow: none;
+  }
+
+  :global(.winui-shell) .timeline-editorial-board::before {
+    display: none;
+  }
+
+  :global(.winui-shell) .timeline-summary-strip {
+    min-height: 48px;
+    padding: 10px 14px;
+    border-bottom-color: var(--win-stroke);
+    background: color-mix(in srgb, var(--win-layer-alt) 82%, transparent);
+  }
+
+  :global(.winui-shell) .timeline-summary-copy {
+    gap: 8px;
+    color: var(--win-text-secondary);
+    font-size: 13px;
+  }
+
+  :global(.winui-shell) .timeline-summary-divider {
+    color: var(--win-text-tertiary);
+  }
+
+  :global(.winui-shell) .timeline-summary-action {
+    min-height: 32px;
+    padding: 5px 10px;
+    border: 1px solid var(--win-stroke);
+    border-radius: 4px;
+    background: var(--win-control);
+    color: var(--win-text);
+  }
+
+  :global(.winui-shell) .timeline-summary-action:hover {
+    background: var(--win-control-hover);
+  }
+
+  :global(.winui-shell) .timeline-editorial-shell {
+    --timeline-anchor-width: 4.75rem;
+    padding: 8px 8px 12px;
+  }
+
+  :global(.winui-shell) .timeline-rail {
+    left: calc(8px + var(--timeline-anchor-width) + 8px);
+    top: 12px;
+    bottom: 12px;
+    width: 1px;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--win-accent) 52%, var(--win-stroke));
+    opacity: 0.76;
+  }
+
+  :global(.winui-shell) .timeline-entry {
+    gap: 8px;
+    padding: 1px 0;
+    transition: none;
+  }
+
+  :global(.winui-shell) .timeline-entry + .timeline-entry {
+    margin-top: 0;
+  }
+
+  :global(.winui-shell) .timeline-entry:hover {
+    transform: none;
+    filter: none;
+  }
+
+  :global(.winui-shell) .timeline-entry-anchor {
+    gap: 8px;
+    padding-top: 11px;
+  }
+
+  :global(.winui-shell) .timeline-entry-time {
+    font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    font-size: 12px;
+    letter-spacing: 0;
+    color: var(--win-text-secondary);
+  }
+
+  :global(.winui-shell) .timeline-entry-marker,
+  :global(.winui-shell) .timeline-entry-marker-featured {
+    width: 7px;
+    height: 7px;
+    margin-top: 4px;
+    background: var(--win-accent);
+    box-shadow: 0 0 0 3px var(--win-layer);
+  }
+
+  :global(.winui-shell) .timeline-entry:hover .timeline-entry-marker,
+  :global(.winui-shell) .timeline-entry:focus-visible .timeline-entry-marker {
+    transform: none;
+    box-shadow: 0 0 0 3px var(--win-layer);
+  }
+
+  :global(.winui-shell) .timeline-entry-card,
+  :global(.winui-shell) .timeline-entry-card-featured,
+  :global(.winui-shell) .timeline-entry-card-compact {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    transition:
+      background-color 100ms ease,
+      border-color 100ms ease;
+  }
+
+  :global(.winui-shell) .timeline-entry:hover .timeline-entry-card,
+  :global(.winui-shell) .timeline-entry:focus-visible .timeline-entry-card {
+    border-color: var(--win-stroke);
+    background: var(--win-control-hover);
+    box-shadow: none;
+  }
+
+  :global(.winui-shell) .timeline-entry-card-compact {
+    gap: 8px 12px;
+    padding: 8px 10px;
+  }
+
+  :global(.winui-shell) .timeline-entry-card-featured {
+    gap: 12px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--win-control) 62%, transparent);
+  }
+
+  :global(.winui-shell) .timeline-featured-image {
+    border-color: var(--win-stroke);
+    border-radius: 6px;
+  }
+
+  :global(.winui-shell) .timeline-entry-app {
+    gap: 10px;
+  }
+
+  :global(.winui-shell) .timeline-app-icon,
+  :global(.winui-shell) .timeline-entry-app-compact .timeline-app-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  :global(.winui-shell) .timeline-app-icon-image,
+  :global(.winui-shell) .timeline-entry-app-compact .timeline-app-icon-image {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+  }
+
+  :global(.winui-shell) .timeline-entry-app-name,
+  :global(.winui-shell) .timeline-entry-title {
+    color: var(--win-text);
+  }
+
+  :global(.winui-shell) .timeline-entry-app-name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  :global(.winui-shell) .timeline-entry-category-pill {
+    min-height: 20px;
+    padding: 2px 6px;
+    border-color: transparent;
+    border-radius: 4px;
+    background: var(--win-control);
+    color: var(--win-text-secondary);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  :global(.winui-shell) .timeline-entry-title-compact,
+  :global(.winui-shell) .timeline-entry-url,
+  :global(.winui-shell) .timeline-entry-tail {
+    color: var(--win-text-secondary);
+  }
+
+  :global(.winui-shell) .timeline-entry-title-compact {
+    font-size: 13px;
+  }
+
+  :global(.winui-shell) .timeline-entry-duration {
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  :global(.winui-shell) .timeline-entry-arrow {
+    color: var(--win-text-tertiary);
+  }
+
+  :global(.winui-shell) .timeline-load-more {
+    padding: 8px 8px 0 calc(8px + var(--timeline-anchor-width));
+  }
+
+  :global(.winui-shell) .timeline-load-more-btn {
+    min-height: 32px;
+    padding: 5px 10px;
+    border: 1px solid var(--win-stroke);
+    border-radius: 4px;
+    background: var(--win-control);
+    color: var(--win-text-secondary);
+    font-size: 13px;
+  }
+
+  :global(.winui-shell) .timeline-load-more-btn:hover:enabled {
+    border-style: solid;
+    background: var(--win-control-hover);
+  }
+
   .timeline-intent-badge {
     display: inline-flex;
     width: fit-content;

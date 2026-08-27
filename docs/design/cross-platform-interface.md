@@ -1,95 +1,95 @@
-# Dark Current cross-platform interface
+# Windows Fluent desktop and Dark Current Android
 
 ## Product and audience
 
 Work Review is a private activity stream for people who spend long periods at a computer and need to scan where their day went. The interface has one job: turn captured activity into a fast, legible sequence without feeling like a surveillance dashboard.
 
-The previous Work Ledger direction is retired. Its brown surfaces, paper metaphor, serif headings, and editorial ornament made a compact utility feel old and visually heavy. The product now uses a dark-only, cool-neutral visual system.
+The desktop and mobile applications share information architecture and icon meaning, but they deliberately follow their host platforms. The Windows desktop uses Windows 11 native Fluent structure and material. Android remains a native Compose application using the compact Dark Current theme.
 
-## Visual direction
+## Desktop direction: Windows 11 native Fluent
 
-### Palette
+The desktop must feel like it belongs beside Windows Settings and modern inbox applications. It uses the same kinds of resources recommended by Microsoft's Windows design guidance:
 
-- Void `#080A0D`: window canvas and deepest background.
-- Graphite `#0E1217`: sidebar, window chrome, and quiet surfaces.
-- Slate `#141A22`: rows, controls, and raised content.
-- Edge `#252E3A`: structural borders and separators.
-- Frost `#F3F6FA`: primary text.
-- Signal `#7AA2F7`: current route, time position, focus, and primary actions.
+- WinUI 3 Gallery for control anatomy, states, title-bar behavior, navigation, command surfaces, and settings patterns.
+- Windows Design Kit proportions for spacing, type hierarchy, corner radii, and layer relationships.
+- Microsoft Fluent System Icons SVG paths for cross-platform-safe icon rendering inside the Tauri WebView.
+- DWM Mica for the real Windows 11 window backdrop, with an opaque WinUI dark fallback when the operating system cannot provide it.
 
-Supporting text uses blue-gray `#8A96A8`; recording health uses mint `#43D6A2`; destructive actions use coral `#FF7B72`. Brown, copper, cream, warm paper, and serif typography are prohibited.
+This is not a CSS glass theme. The compositor owns the backdrop; the web layer stays quiet and supplies controls, content layers, and interaction states.
 
-### Type
+### Desktop tokens
 
-- Page identity and body: platform UI sans (`Segoe UI Variable`, `PingFang SC`, `Noto Sans CJK SC`, platform sans).
-- Totals and section headings: the same UI family at a firmer weight; no display serif.
-- Times, durations, package names, and state codes: `Bahnschrift`, `Cascadia Mono`, `SFMono-Regular`, platform monospace.
+- Mica fallback `#202020`: deepest canvas when DWM material is unavailable.
+- Navigation pane `rgba(44, 44, 44, 0.82)`: translucent pane over DWM Mica.
+- Layer `rgba(45, 45, 45, 0.92)`: grouped lists, settings sections, and summary cards.
+- Layer alt `rgba(50, 50, 50, 0.88)`: setting rows and secondary surfaces.
+- Stroke `rgba(255, 255, 255, 0.0837)`: WinUI dark-theme structural outline.
+- Primary text `#FFFFFF`; secondary text `#D1D1D1`; tertiary text `#9D9D9D`.
+- System-style accent `#60CDFF`; accent text `#99EBFF`; success `#6CCB5F`; destructive `#FF99A4`.
 
-The hierarchy comes from weight, width, alignment, and space—not decorative font switching.
+Controls use a 4 px radius; grouped layers and flyouts use 8 px. Large pill-shaped controls, luminous card borders, decorative gradients, and generic dashboard atmosphere are prohibited.
 
-### Signature: the signal track
+### Desktop type
 
-A thin blue signal track connects captured activity across desktop and Android. Its dots represent real session positions; the currently active or strongest point has a restrained halo. It is the only luminous element. No ambient blobs, fake paper rules, ornamental gradients, or unrelated glow effects are allowed.
+- Page titles: `Segoe UI Variable Display`, semibold, 28 px.
+- Interface and body: `Segoe UI Variable Text`, regular, 13–14 px.
+- Times and durations: `Cascadia Mono` or Consolas, used only where stable numeric alignment helps scanning.
 
-Motion is limited to the live recording pulse and a short row hover/press response. Reduced-motion disables the pulse and transitions.
+Hierarchy comes from the Windows type ramp, layer boundaries, alignment, and whitespace. It does not use display serifs, uppercase decorative kickers, or exaggerated tracking.
 
-## Desktop structure
-
-```text
-┌──── command rail ────┬──────────────── activity stream ────────────────┐
-│ Work Review          │ Timeline                         date · refresh │
-│ ● Recording          │ Today · 18 sessions · 08:14—16:42             │
-│                      ├─────────────────────────────────────────────────┤
-│ ▌ Timeline           │ 16:32  ●  [icon] Application     08m           │
-│   Settings           │        │  Window or task title                  │
-│                      │ 16:08  ●  [icon] Application     21m           │
-│                      │        │  Window or task title                  │
-│ ZH                   │                                             │
-└──────────────────────┴─────────────────────────────────────────────────┘
-```
-
-- The command rail is compact and visually quieter than the activity stream.
-- Window chrome merges with the canvas rather than appearing as a separate bar.
-- The page header is compact; the content starts near the top instead of presenting an oversized title.
-- The date summary is one low-profile status band, not a KPI or editorial masthead.
-- Activity rows are dense, flat, and separated by edges. Rounded containers are used only where grouping is necessary.
-- Settings use a compact category rail and a single graphite reading pane. Avoid nested cards.
-
-## Android structure
+### Desktop structure
 
 ```text
-┌ WORK REVIEW                         ● REC ┐
-│ 今日活动                                     │
-│ 06:24                                      │
-│ ‹               8 月 16 日              ›  │
-├─────────────────────────────────────────────┤
-│ 应用排行                                     │
-│ [icon] Claude                         1:42  │
-│ [icon] Obsidian                       1:08  │
-│                                             │
-├  总览      时间线       设置       状态  ────┤
+┌─ icon · Work Review ─────────────────────────────  —  □  × ┐
+│ NavigationView pane │ Timeline                    date  ↻ │
+│                     │ Activity record · live time          │
+│  ▌ Timeline         │ ┌ command/status strip ────────────┐ │
+│    Settings         │ ├ 18:36  icon  App  Title     43s ┤ │
+│                     │ ├ 18:35  icon  App  Title      6s ┤ │
+│ ┌ recording · pause┐│ ├ 18:34  icon  App  Title     12m ┤ │
+│ └──────────────────┘│ └──────────────────────────────────┘ │
+│ ZH                  │                                      │
+└─────────────────────┴──────────────────────────────────────┘
 ```
 
-- The app is dark-only and edge-to-edge; it does not follow the device light theme.
-- Overview opens with a compact total-time block and immediately exposes useful rows.
-- Bottom navigation is flat with a top edge; selected state is color and weight, not a large pill.
-- Timeline rows show icon + readable label with time data aligned in a stable column.
-- Package names remain secondary and are shown only where identity/debugging benefits.
-- Settings use stacked graphite sections with subtle edges and direct labels.
-- Blocked apps open in a near-full-height dark sheet with search, icon + label, package secondary, a clear check state, and a persistent Save action.
+- The custom title bar is 32 px high and follows Windows caption-button geometry.
+- The 240 px left pane behaves like a compact `NavigationView`: flat rows, a 3 px selection indicator, and restrained hover/pressed states.
+- Recording state lives at the bottom of the navigation pane as an operational status row, not as branding.
+- Page headers are compact and unboxed. Commands use WinUI button/input geometry.
+- The timeline is one grouped layer. Rows highlight on hover instead of appearing as individually glowing cards.
+- Settings use a horizontal Pivot for General, Privacy, and Storage, followed by one reading pane. This avoids a second competing vertical navigation rail.
+- Flyouts and date pickers use a solid WinUI dark surface and system-style elevation.
+
+### Signature: the activity signal rail
+
+The only product-specific flourish is the thin accent activity rail. It connects real captured sessions and uses the Windows accent color, so it reads as part of the system while still making the product recognizable. It must not emit ambient glow or compete with content.
+
+## Android direction: Dark Current
+
+Android remains a native Jetpack Compose interface and does not imitate Windows controls. It keeps the established Dark Current tokens:
+
+- Void `#080A0D` for the app canvas.
+- Graphite `#0E1217` for navigation and quiet surfaces.
+- Slate `#141A22` for rows and raised content.
+- Edge `#252E3A` for separators.
+- Frost `#F3F6FA` for primary text.
+- Signal `#7AA2F7` for the current destination and primary actions.
+- Mint `#43D6A2` for recording health.
+
+The mobile app stays dark-only, edge-to-edge, compact, and content first. App identity remains icon + readable label, with the package name only as secondary technical context where it helps selection or diagnosis.
 
 ## Interaction and accessibility contract
 
-- Minimum target: 44 px desktop and 48 dp Android.
-- Icon-only controls have labels/content descriptions.
-- Desktop focus uses a visible Signal outline.
-- Frost/blue-gray text maintains WCAG AA contrast against Void, Graphite, and Slate.
+- Every icon-only desktop control has a tooltip or accessible name; Android icons have content descriptions.
+- Desktop keyboard focus uses a 2 px accent outline. Navigation and Pivot states remain visible without relying on hover.
+- Primary and secondary text maintain WCAG AA contrast against the dark layers.
+- Motion is limited to short WinUI hover/press feedback and recording state. Reduced-motion disables nonessential animation.
 - Empty and error states explain the next action plainly.
-- Destructive controls stay coral and retain existing confirmation behavior.
-- Reduced-motion and Android animation settings are respected.
+- Destructive controls retain their existing confirmation behavior and destructive color.
 
 ## Non-regression boundaries
 
-- Desktop: preserve Tauri window controls, recording pause/resume, timeline loading/paging, summary route, activity details, category edits, settings save, locale switching, and the always-dark runtime.
+- Desktop: preserve Tauri window controls, recording pause/resume, timeline loading/paging, summary route, activity details, category edits, settings save, locale switching, system tray behavior, and the always-dark runtime.
+- DWM material is progressive enhancement: Windows versions without the required backdrop attributes must continue with the dark fallback surface.
 - Android: preserve Usage Access onboarding, background collection, session threshold, ignored packages, application icon/name resolution, export directory/times, manual export, data clearing, and debug status.
-- Android application IDs and stored preference keys must not change.
+- Android application IDs, database schema, and stored preference keys must not change.

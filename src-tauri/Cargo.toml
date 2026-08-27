@@ -1,6 +1,6 @@
 [package]
 name = "work-review"
-version = "1.0.48"
+version = "1.0.49"
 description = "个人工作回顾与AI日报助手"
 authors = ["WorkReview Team"]
 edition = "2021"
@@ -60,7 +60,7 @@ auto-launch = "0.6.0"
 # 平台特定依赖 - Windows
 [target.'cfg(windows)'.dependencies]
 windows-capture = "1.5"
-winapi = { version = "0.3", features = ["winuser", "processthreadsapi", "tlhelp32", "psapi", "handleapi", "winnt", "winbase", "sysinfoapi", "wingdi", "libloaderapi", "shellapi", "commctrl", "commoncontrols"] }
+winapi = { version = "0.3", features = ["dwmapi", "winuser", "processthreadsapi", "tlhelp32", "psapi", "handleapi", "winnt", "winbase", "sysinfoapi", "wingdi", "libloaderapi", "shellapi", "commctrl", "commoncontrols"] }
 uiautomation = "0.24"
 
 # 平台特定依赖 - macOS
