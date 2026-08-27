@@ -11,6 +11,7 @@
 - Android: native Kotlin/Jetpack Compose app with overview, timeline, settings, export, diagnostics, and a full-height blocked-app picker.
 - Android app identity resolution now combines package-manager labels, decoded launcher icons, known labels, and a readable package-derived fallback. The package name is only secondary context in the blocked-app sheet.
 - Desktop release `1.0.49` uses the Windows Fluent direction: a real Windows 11 DWM Mica backdrop, rounded system window treatment, Segoe UI Variable typography, NavigationView-style sidebar, Pivot-style settings navigation, compact grouped lists, and Microsoft Fluent System Icons.
+- Windows production copies are portable deployments at `C:\Portable Programs\Work Review\Work_Review.exe` on both the local PC and Windows server. Do not deploy or update Work Review through the NSIS installer or `%LOCALAPPDATA%\Programs`.
 - Android release `0.1.1` retains the touch-native Dark Current direction: cool graphite surfaces, blue-gray text, restrained blue signals, sans-serif typography, and dense content-first layouts.
 - App and UI icons use Microsoft Fluent System Icons (`microsoft/fluentui-system-icons`) across desktop, web, Android launcher, and system tray.
 - Design contract: [docs/design/cross-platform-interface.md](docs/design/cross-platform-interface.md).
@@ -20,6 +21,8 @@
 - Completed: replace the desktop Dark Current shell with a Windows 11 Fluent shell while preserving collection, storage, timeline, summary, settings, and privacy behavior.
 - Completed: enable the native DWM system backdrop and rounded corners, with transparent WebView surfaces and a deterministic Mica fallback for unsupported sessions.
 - Completed: verify the real release EXE on the timeline, summary, and settings routes; the old glowing pill cards are replaced by compact grouped-list rows.
+- Completed: deploy Windows `1.0.49` to the local PC and `META-ROGALLY` as portable copies under `C:\Portable Programs\Work Review`, remove the retired installed copies, and verify the portable process path/version on both machines.
+- Completed: install Android `0.1.1` (`versionCode 2`) on the connected `vermeer` device with `adb install -r` and relaunch its main activity without clearing application data.
 - Completed: replace the rejected Work Ledger treatment with the cold-dark Dark Current desktop direction.
 - Completed: apply the same dark-only direction to Android navigation, overview, timeline, settings, and blocked-app management.
 - Completed: add resilient app identity resolution and icon rendering for Android.
@@ -39,6 +42,7 @@ npm run tauri:build
 - Vite development server: `npm run dev -- --host 127.0.0.1 --port 5173`.
 - Browser-only Vite rendering is not a valid desktop acceptance path because `App.svelte` initializes the Tauri webview window API at module startup; use the actual Tauri window for final visual checks.
 - Windows release artifacts are under `target\release\` and `target\release\bundle\` because this repository uses a workspace-level Cargo target directory.
+- Deploy the Windows portable build by stopping `Work_Review.exe`, replacing `C:\Portable Programs\Work Review\Work_Review.exe` with `target\release\Work_Review.exe`, then starting that portable EXE and verifying its process path and product version. The NSIS bundle is only a build artifact and is not the production update path.
 - The focused Windows Fluent/UI suite is green (23/23). The repository-wide `node --test` reports 93 pass / 14 fail because legacy tests still require modules deliberately absent from the Lite branch (notably Overview, avatar, AI/provider, and update flows); treat those as baseline branch debt rather than redesign regressions.
 
 ## Android
@@ -60,3 +64,4 @@ Set-Location mobile-android
 - Warm cream, brown/copper accents, and large serif editorial headings read as a generic generated-dashboard pattern in this product and were explicitly rejected; retain the cool graphite Dark Current palette and compact sans hierarchy.
 - A Windows-looking WebView surface is not equivalent to a Windows-native desktop shell: keep the DWM backdrop, transparent WebView, caption controls, and WinUI token layer working together, and verify the actual release EXE rather than browser-only rendering.
 - Svelte component-scoped dark rules can override global shell tokens late in the cascade. Keep route-specific WinUI overrides beside the component when necessary and validate hover/focus states in the release window.
+- Do not infer the Windows deployment target from a running legacy copy. This product is intentionally operated as a portable application under `C:\Portable Programs`; `%LOCALAPPDATA%\Programs\Work Review` is a retired installation and must not be recreated by deployments.
