@@ -8,7 +8,7 @@ test('桌面壳层采用 WinUI 令牌、原生 DWM Mica 与 Fluent 导航结构'
     readFile(new URL('./lib/components/Sidebar.svelte', import.meta.url), 'utf8'),
     readFile(new URL('./routes/timeline/Timeline.svelte', import.meta.url), 'utf8'),
     readFile(new URL('./app.css', import.meta.url), 'utf8'),
-    readFile(new URL('../src-tauri/src/main.rs', import.meta.url), 'utf8'),
+    readFile(new URL('../src-tauri/src/shell.rs', import.meta.url), 'utf8'),
     readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'),
     readFile(new URL('../docs/design/cross-platform-interface.md', import.meta.url), 'utf8'),
     readFile(new URL('../mobile-android/app/src/main/java/com/metacodex/workreview/ui/WorkReviewMobileApp.kt', import.meta.url), 'utf8'),

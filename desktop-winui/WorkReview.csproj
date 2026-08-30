@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>WorkReview</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Work_Review</AssemblyName>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>1.1.0</Version>
+    <InformationalVersion>1.1.0</InformationalVersion>
+    <Product>Work Review</Product>
+    <Company>WorkReview</Company>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="app.manifest">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Content Include="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="i18n\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Engine\work_review_engine.dll">
+      <Link>work_review_engine.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+
+  <!-- 引入 Rust 引擎 DLL：先运行 cargo build release with the ffi feature -->
+  <Target Name="EnsureEngineDll" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\Engine\work_review_engine.dll')"
+           Text="缺少 Engine\work_review_engine.dll - 先运行 cargo build release with the ffi feature" />
+  </Target>
+</Project>

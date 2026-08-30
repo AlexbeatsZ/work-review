@@ -63,3 +63,9 @@ src-tauri/icons.backup/
 .worktrees/
 .superpowers/
 target/
+
+# WinUI 3 desktop frontend build output
+desktop-winui/bin/
+desktop-winui/obj/
+desktop-winui/publish/
+desktop-winui/Engine/work_review_engine.dll

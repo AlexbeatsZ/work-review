@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+
+    <!-- Work Review Windows Fluent 令牌（docs/design/cross-platform-interface.md）
+         产品以深色运行；Mica 由 SystemBackdrop 提供，这些是内容层令牌。 -->
+
+    <Color x:Key="WaAccentColor">#60CDFF</Color>
+    <Color x:Key="WaAccentTextColor">#99EBFF</Color>
+    <Color x:Key="WaSuccessColor">#6CCB5F</Color>
+    <Color x:Key="WaDestructiveColor">#FF99A4</Color>
+    <Color x:Key="WaTextPrimary">#FFFFFF</Color>
+    <Color x:Key="WaTextSecondary">#D1D1D1</Color>
+    <Color x:Key="WaTextTertiary">#9D9D9D</Color>
+
+    <SolidColorBrush x:Key="WaAccentBrush" Color="{StaticResource WaAccentColor}" />
+    <SolidColorBrush x:Key="WaAccentTextBrush" Color="{StaticResource WaAccentTextColor}" />
+    <SolidColorBrush x:Key="WaSuccessBrush" Color="{StaticResource WaSuccessColor}" />
+    <SolidColorBrush x:Key="WaDestructiveBrush" Color="{StaticResource WaDestructiveColor}" />
+    <SolidColorBrush x:Key="WaTextPrimaryBrush" Color="{StaticResource WaTextPrimary}" />
+    <SolidColorBrush x:Key="WaTextSecondaryBrush" Color="{StaticResource WaTextSecondary}" />
+    <SolidColorBrush x:Key="WaTextTertiaryBrush" Color="{StaticResource WaTextTertiary}" />
+
+    <SolidColorBrush x:Key="WaLayerBrush" Color="#E82D2D2D" />
+    <SolidColorBrush x:Key="WaLayerAltBrush" Color="#E0323232" />
+    <SolidColorBrush x:Key="WaLayerFloatingBrush" Color="#F0303030" />
+    <SolidColorBrush x:Key="WaStrokeBrush" Color="#15FFFFFF" />
+    <SolidColorBrush x:Key="WaStrokeStrongBrush" Color="#29FFFFFF" />
+
+    <!-- WinUI 圆角令牌：控件 4px，层/浮层 8px -->
+    <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+
+    <!-- 页面标题：Segoe UI Variable Display 28 semibold -->
+    <Style x:Key="WaPageTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextPrimaryBrush}" />
+        <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+    </Style>
+
+    <Style x:Key="WaSectionTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="WaBody" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextPrimaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="WaCaption" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextTertiaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="WaMono" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextSecondaryBrush}" />
+    </Style>
+
+    <!-- 分组层容器（替换旧发光卡片） -->
+    <Style x:Key="WaLayerCard" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource WaLayerBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource WaStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+
+    <!-- 设置行分隔线 -->
+    <Style x:Key="WaSettingsSeparator" TargetType="Rectangle">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Fill" Value="{ThemeResource WaStrokeBrush}" />
+        <Setter Property="Opacity" Value="0.6" />
+        <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+
+    <!-- 时间线行（紧凑分组列表行，悬停高亮） -->
+    <Style x:Key="WaTimelineRow" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="MinHeight" Value="44" />
+    </Style>
+
+    <!-- 状态胶囊 -->
+    <Style x:Key="WaPillText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{ThemeResource WaAccentTextBrush}" />
+    </Style>
+
+    <Style x:Key="WaNavStatusText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextSecondaryBrush}" />
+    </Style>
+
+    <!-- 详情/确认对话框：加宽以承载分类网格与截图 -->
+    <Style x:Key="WaContentDialog" TargetType="ContentDialog" BasedOn="{StaticResource DefaultContentDialogStyle}">
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Background" Value="{ThemeResource WaLayerFloatingBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource WaStrokeStrongBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource WaTextPrimaryBrush}" />
+    </Style>
+
+        <Style x:Key="SettingsCard" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource WaLayerBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource WaStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="18,14" />
+        </Style>
+        <Style x:Key="SettingsCardTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{ThemeResource WaTextPrimaryBrush}" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style x:Key="RowLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{ThemeResource WaTextPrimaryBrush}" />
+        </Style>
+        <Style x:Key="RowHint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{ThemeResource WaTextTertiaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <x:Double x:Key="RowSpacing">14</x:Double>
+    
+</ResourceDictionary>

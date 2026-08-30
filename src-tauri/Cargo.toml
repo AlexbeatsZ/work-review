@@ -78,8 +78,16 @@ x11 = { version = "2.21.0", features = ["xlib", "xinput"] }
 [target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
 tauri-plugin-autostart = "2.5.1"
 
+[lib]
+name = "work_review_engine"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
 [features]
 default = ["custom-protocol"]
+# 引擎 FFI 构建（Windows WinUI 3 前端使用）：
+# cargo build --release -p work-review --features ffi --lib
+ffi = []
 custom-protocol = ["tauri/custom-protocol"]
 # Compatibility shim for old objc macros that still expand cfg(feature = "cargo-clippy")
 cargo-clippy = []

@@ -7,7 +7,7 @@ test('主窗口应默认隐藏并由启动流程决定是否显示', async () =>
     await readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8')
   );
   const mainSource = await readFile(
-    new URL('../src-tauri/src/main.rs', import.meta.url),
+    new URL('../src-tauri/src/lib.rs', import.meta.url),
     'utf8'
   );
 

@@ -21,6 +21,7 @@ use crate::work_intelligence::{
     generate_weekly_review as build_weekly_review, IntentAnalysisResult, TodoExtractionResult,
     WeeklyReviewResult, WorkSession,
 };
+use crate::events;
 use crate::AppState;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -827,9 +828,19 @@ pub async fn get_activity(
     id: i64,
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<Option<Activity>, AppError> {
+    get_activity_inner(id, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_activity_inner(
+    id: i64,
+    state: &Arc<Mutex<AppState>>
+) -> Result<Option<Activity>, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     state.database.get_activity_by_id(id)
 }
+
 
 /// 搜索工作记忆
 #[tauri::command]
@@ -876,6 +887,17 @@ pub async fn recognize_work_intents(
     limit: Option<u32>,
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<IntentAnalysisResult, AppError> {
+    recognize_work_intents_inner(date_from, date_to, limit, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn recognize_work_intents_inner(
+    date_from: Option<String>,
+    date_to: Option<String>,
+    limit: Option<u32>,
+    state: &Arc<Mutex<AppState>>
+) -> Result<IntentAnalysisResult, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let activities = load_filtered_activities_in_range(
         &state,
@@ -886,6 +908,7 @@ pub async fn recognize_work_intents(
 
     Ok(analyze_intents(&activities))
 }
+
 
 /// 生成周报 / 阶段复盘 —— 内部复用版（供 Tauri 命令与 localhost API 共用）
 pub(crate) fn generate_weekly_review_inner(
@@ -1235,14 +1258,24 @@ pub async fn export_report_markdown(
 
 /// 获取配置
 #[tauri::command]
-pub async fn get_config(state: State<'_, Arc<Mutex<AppState>>>) -> Result<AppConfig, AppError> {
+pub async fn get_config(
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<AppConfig, AppError> {
+    get_config_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_config_inner(
+    state: &Arc<Mutex<AppState>>
+) -> Result<AppConfig, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     Ok(state.config.clone())
 }
 
+
 pub(crate) fn persist_app_config(
     mut config: AppConfig,
-    app: AppHandle,
     state: &Arc<Mutex<AppState>>,
 ) -> Result<(), AppError> {
     config.normalize();
@@ -1271,10 +1304,11 @@ pub(crate) fn persist_app_config(
         || previous_lightweight_mode != config.lightweight_mode;
 
     if dock_visibility_changed {
-        crate::sync_effective_dock_visibility(&app);
+        #[cfg(not(feature = "ffi"))]
+        crate::events::with_tauri_handle(crate::shell::sync_effective_dock_visibility);
     }
 
-    crate::emit_config_changed(&app, &config);
+    crate::events::notify_config_changed(&config);
 
     log::info!("配置已保存");
     Ok(())
@@ -1284,79 +1318,133 @@ pub(crate) fn persist_app_config(
 #[tauri::command]
 pub async fn save_config(
     config: AppConfig,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<(), AppError> {
-    persist_app_config(config, app, state.inner())
+    save_config_inner(config, state.inner()).await
 }
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn save_config_inner(
+    config: AppConfig,
+    state: &Arc<Mutex<AppState>>
+) -> Result<(), AppError> {
+    persist_app_config(config, state)
+}
+
 
 /// 开始录制
 #[tauri::command]
 pub async fn start_recording(
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    start_recording_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn start_recording_inner(
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     state.is_recording = true;
     state.is_paused = false;
     log::info!("开始录制");
+    let recording_state = (state.is_recording, state.is_paused);
     drop(state);
-    crate::emit_recording_state_changed(&app);
+    crate::events::notify_recording_state_changed(recording_state.0, recording_state.1);
     Ok(())
 }
+
 
 /// 停止录制
 #[tauri::command]
 pub async fn stop_recording(
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    stop_recording_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn stop_recording_inner(
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     state.is_recording = false;
     state.is_paused = false;
     log::info!("停止录制");
+    let recording_state = (state.is_recording, state.is_paused);
     drop(state);
-    crate::emit_recording_state_changed(&app);
+    crate::events::notify_recording_state_changed(recording_state.0, recording_state.1);
     Ok(())
 }
+
 
 /// 暂停录制
 #[tauri::command]
 pub async fn pause_recording(
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    pause_recording_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn pause_recording_inner(
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     state.is_paused = true;
     log::info!("暂停录制");
+    let recording_state = (state.is_recording, state.is_paused);
     drop(state);
-    crate::emit_recording_state_changed(&app);
+    crate::events::notify_recording_state_changed(recording_state.0, recording_state.1);
     Ok(())
 }
+
 
 /// 恢复录制
 #[tauri::command]
 pub async fn resume_recording(
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    resume_recording_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn resume_recording_inner(
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let mut state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     state.is_recording = true;
     state.is_paused = false;
     log::info!("恢复录制");
+    let recording_state = (state.is_recording, state.is_paused);
     drop(state);
-    crate::emit_recording_state_changed(&app);
+    crate::events::notify_recording_state_changed(recording_state.0, recording_state.1);
     Ok(())
 }
+
 
 /// 获取录制状态
 #[tauri::command]
 pub async fn get_recording_state(
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<(bool, bool), AppError> {
+    get_recording_state_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_recording_state_inner(
+    state: &Arc<Mutex<AppState>>
+) -> Result<(bool, bool), AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     Ok((state.is_recording, state.is_paused))
 }
+
 
 /// 显示主窗口
 #[tauri::command]
@@ -1384,8 +1472,16 @@ pub async fn get_manual_followups(
 #[tauri::command]
 pub async fn add_manual_followup(
     input: ManualFollowupInput,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<ManualFollowupItem, AppError> {
+    add_manual_followup_inner(input, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn add_manual_followup_inner(
+    input: ManualFollowupInput,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<ManualFollowupItem, AppError> {
     let title = input.title.trim().to_string();
     if title.is_empty() {
@@ -1435,17 +1531,27 @@ pub async fn add_manual_followup(
     };
     config.manual_followups.push(item.clone());
     config.normalize();
-    persist_app_config(config, app, state.inner())?;
+    persist_app_config(config, state)?;
 
     Ok(item)
 }
+
 
 #[tauri::command]
 pub async fn update_manual_followup_status(
     id: String,
     status: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    update_manual_followup_status_inner(id, status, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn update_manual_followup_status_inner(
+    id: String,
+    status: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let id = id.trim();
     if id.is_empty() {
@@ -1472,15 +1578,24 @@ pub async fn update_manual_followup_status(
     }
 
     config.normalize();
-    persist_app_config(config, app, state.inner())?;
+    persist_app_config(config, state)?;
     Ok(())
 }
+
 
 #[tauri::command]
 pub async fn delete_manual_followup(
     id: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    delete_manual_followup_inner(id, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn delete_manual_followup_inner(
+    id: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let id = id.trim();
     if id.is_empty() {
@@ -1498,25 +1613,46 @@ pub async fn delete_manual_followup(
     }
 
     config.normalize();
-    persist_app_config(config, app, state.inner())?;
+    persist_app_config(config, state)?;
     Ok(())
 }
 
+
 /// 获取数据目录
 #[tauri::command]
-pub async fn get_data_dir(state: State<'_, Arc<Mutex<AppState>>>) -> Result<String, AppError> {
+pub async fn get_data_dir(
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<String, AppError> {
+    get_data_dir_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_data_dir_inner(
+    state: &Arc<Mutex<AppState>>
+) -> Result<String, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     Ok(path_for_display(&state.data_dir))
 }
+
 
 /// 获取当前 SQLite 数据库文件路径
 #[tauri::command]
 pub async fn get_database_path(
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<String, AppError> {
+    get_database_path_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_database_path_inner(
+    state: &Arc<Mutex<AppState>>
+) -> Result<String, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     Ok(path_for_display(&state.db_path))
 }
+
 
 /// 获取默认数据目录
 #[tauri::command]
@@ -1727,8 +1863,16 @@ fn remove_app_managed_entries(target_dir: &Path) -> Result<(u64, Vec<String>), A
 #[tauri::command]
 pub async fn change_data_dir(
     target_dir: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<serde_json::Value, AppError> {
+    change_data_dir_inner(target_dir, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn change_data_dir_inner(
+    target_dir: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<serde_json::Value, AppError> {
     let requested_dir = target_dir.trim();
     if requested_dir.is_empty() {
@@ -1801,8 +1945,9 @@ pub async fn change_data_dir(
     state.config_path = config_path;
 
     log::info!("数据目录已切换到: {:?}", target_dir);
+    let recording_state = (state.is_recording, state.is_paused);
     drop(state);
-    crate::emit_recording_state_changed(&app);
+    crate::events::notify_recording_state_changed(recording_state.0, recording_state.1);
 
     Ok(serde_json::json!({
         "dataDir": target_dir.to_string_lossy().to_string(),
@@ -1816,6 +1961,7 @@ pub async fn change_data_dir(
         ),
     }))
 }
+
 
 fn normalize_database_target_path(requested_path: PathBuf) -> PathBuf {
     if requested_path
@@ -1833,8 +1979,16 @@ fn normalize_database_target_path(requested_path: PathBuf) -> PathBuf {
 #[tauri::command]
 pub async fn change_database_path(
     target_path: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<serde_json::Value, AppError> {
+    change_database_path_inner(target_path, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn change_database_path_inner(
+    target_path: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<serde_json::Value, AppError> {
     let requested = target_path.trim();
     if requested.is_empty() {
@@ -1893,8 +2047,9 @@ pub async fn change_database_path(
     state.config = config;
     state.db_path = target_path.clone();
 
+    let recording_state = (state.is_recording, state.is_paused);
     drop(state);
-    crate::emit_recording_state_changed(&app);
+    crate::events::notify_recording_state_changed(recording_state.0, recording_state.1);
 
     Ok(serde_json::json!({
         "databasePath": target_path.to_string_lossy().to_string(),
@@ -1903,10 +2058,20 @@ pub async fn change_database_path(
     }))
 }
 
+
 #[tauri::command]
 pub async fn cleanup_old_data_dir(
     target_dir: String,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<serde_json::Value, AppError> {
+    cleanup_old_data_dir_inner(target_dir, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn cleanup_old_data_dir_inner(
+    target_dir: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<serde_json::Value, AppError> {
     let requested_dir = target_dir.trim();
     if requested_dir.is_empty() {
@@ -1971,10 +2136,21 @@ pub async fn cleanup_old_data_dir(
     }))
 }
 
+
 /// 在系统文件管理器中打开数据目录
 /// plugin-shell 的 open 对本地路径在部分平台不可靠，改用系统命令直接打开
 #[tauri::command]
-pub async fn open_data_dir(state: State<'_, Arc<Mutex<AppState>>>) -> Result<(), AppError> {
+pub async fn open_data_dir(
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    open_data_dir_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn open_data_dir_inner(
+    state: &Arc<Mutex<AppState>>
+) -> Result<(), AppError> {
     let data_dir = {
         let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
         state.data_dir.clone()
@@ -2013,11 +2189,21 @@ pub async fn open_data_dir(state: State<'_, Arc<Mutex<AppState>>>) -> Result<(),
     Ok(())
 }
 
+
 /// 获取截图缩略图
 #[tauri::command]
 pub async fn get_screenshot_thumbnail(
     path: String,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<String, AppError> {
+    get_screenshot_thumbnail_inner(path, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_screenshot_thumbnail_inner(
+    path: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<String, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let full_path = state.data_dir.join(&path);
@@ -2026,11 +2212,21 @@ pub async fn get_screenshot_thumbnail(
         .generate_thumbnail_base64(&full_path, 400)
 }
 
+
 /// 获取高分辨率截图（用于详情弹窗，1200px）
 #[tauri::command]
 pub async fn get_screenshot_full(
     path: String,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<String, AppError> {
+    get_screenshot_full_inner(path, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_screenshot_full_inner(
+    path: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<String, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     let full_path = state.data_dir.join(&path);
@@ -2038,6 +2234,7 @@ pub async fn get_screenshot_full(
         .screenshot_service
         .generate_full_image_base64(&full_path)
 }
+
 
 /// 手动执行一次截屏
 #[tauri::command]
@@ -2327,8 +2524,18 @@ pub async fn set_app_category_rule(
     app_name: String,
     category: String,
     sync_history: bool,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<usize, AppError> {
+    set_app_category_rule_inner(app_name, category, sync_history, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn set_app_category_rule_inner(
+    app_name: String,
+    category: String,
+    sync_history: bool,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<usize, AppError> {
     let trimmed_app_name = app_name.trim();
     if trimmed_app_name.is_empty() {
@@ -2342,7 +2549,7 @@ pub async fn set_app_category_rule(
         next_config
     };
 
-    persist_app_config(next_config, app, state.inner())?;
+    persist_app_config(next_config, state)?;
 
     if !sync_history {
         return Ok(0);
@@ -2352,15 +2559,27 @@ pub async fn set_app_category_rule(
     reclassify_app_history_in_state(&state, trimmed_app_name, &category)
 }
 
+
 #[tauri::command]
 pub async fn reclassify_app_history(
     app_name: String,
     category: String,
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<usize, AppError> {
+    reclassify_app_history_inner(app_name, category, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn reclassify_app_history_inner(
+    app_name: String,
+    category: String,
+    state: &Arc<Mutex<AppState>>
+) -> Result<usize, AppError> {
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     reclassify_app_history_in_state(&state, &app_name, &category)
 }
+
 
 /// 分类信息（前端展示用）
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -2421,8 +2640,19 @@ pub async fn save_custom_category(
     name: String,
     color: String,
     icon: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    save_custom_category_inner(key, name, color, icon, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn save_custom_category_inner(
+    key: String,
+    name: String,
+    color: String,
+    icon: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let key = key.trim().to_lowercase();
     let name = name.trim().to_string();
@@ -2482,16 +2712,26 @@ pub async fn save_custom_category(
         next_config
     };
 
-    persist_app_config(next_config, app, state.inner())?;
+    persist_app_config(next_config, state)?;
     Ok(())
 }
+
 
 #[tauri::command]
 pub async fn delete_custom_category(
     key: String,
     reassign_to: Option<String>,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<usize, AppError> {
+    delete_custom_category_inner(key, reassign_to, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn delete_custom_category_inner(
+    key: String,
+    reassign_to: Option<String>,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<usize, AppError> {
     let key = key.trim().to_lowercase();
     let fallback = reassign_to.unwrap_or_else(|| "other".to_string());
@@ -2524,9 +2764,10 @@ pub async fn delete_custom_category(
         next_config
     };
 
-    persist_app_config(next_config, app, state.inner())?;
+    persist_app_config(next_config, state)?;
     Ok(affected)
 }
+
 
 /// 语义分类信息（前端展示用）
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -2585,8 +2826,17 @@ pub async fn get_semantic_categories(
 pub async fn save_custom_semantic_category(
     key: String,
     name: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    save_custom_semantic_category_inner(key, name, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn save_custom_semantic_category_inner(
+    key: String,
+    name: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let key = key.trim().to_lowercase();
     let name = name.trim().to_string();
@@ -2632,15 +2882,24 @@ pub async fn save_custom_semantic_category(
         next_config
     };
 
-    persist_app_config(next_config, app, state.inner())?;
+    persist_app_config(next_config, state)?;
     Ok(())
 }
+
 
 #[tauri::command]
 pub async fn delete_custom_semantic_category(
     key: String,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<usize, AppError> {
+    delete_custom_semantic_category_inner(key, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn delete_custom_semantic_category_inner(
+    key: String,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<usize, AppError> {
     let key = key.trim().to_lowercase();
 
@@ -2674,17 +2933,28 @@ pub async fn delete_custom_semantic_category(
         next_config
     };
 
-    persist_app_config(next_config, app, state.inner())?;
+    persist_app_config(next_config, state)?;
     Ok(affected)
 }
+
 
 #[tauri::command]
 pub async fn set_domain_semantic_rule(
     domain: String,
     semantic_category: String,
     sync_history: bool,
-    app: AppHandle,
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<usize, AppError> {
+    set_domain_semantic_rule_inner(domain, semantic_category, sync_history, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn set_domain_semantic_rule_inner(
+    domain: String,
+    semantic_category: String,
+    sync_history: bool,
+    state: &Arc<Mutex<AppState>>
 ) -> Result<usize, AppError> {
     let normalized_domain = crate::monitor::normalize_domain_rule(&domain)
         .ok_or_else(|| AppError::Unknown("域名不能为空".to_string()))?;
@@ -2704,7 +2974,7 @@ pub async fn set_domain_semantic_rule(
         next_config
     };
 
-    persist_app_config(next_config, app, state.inner())?;
+    persist_app_config(next_config, state)?;
 
     if !sync_history {
         return Ok(0);
@@ -2713,6 +2983,7 @@ pub async fn set_domain_semantic_rule(
     let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
     reclassify_domain_history_in_state(&state, &normalized_domain, trimmed_semantic_category)
 }
+
 
 /// 获取当前运行的应用列表
 #[tauri::command]
@@ -2910,6 +3181,14 @@ pub async fn get_hourly_summaries(
 pub async fn clear_old_activities(
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<serde_json::Value, AppError> {
+    clear_old_activities_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn clear_old_activities_inner(
+    state: &Arc<Mutex<AppState>>
+) -> Result<serde_json::Value, AppError> {
     let data_dir = {
         let state = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
         state.data_dir.clone()
@@ -2960,6 +3239,7 @@ pub async fn clear_old_activities(
         "message": format!("已清理 {} 张旧截图和对应活动记录，保留今天和昨天的数据", deleted_screenshots)
     }))
 }
+
 
 /// 获取指定日期的 OCR 日志
 #[tauri::command]
@@ -4115,6 +4395,15 @@ pub async fn save_background_image(
     data: String,
     state: State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<(), AppError> {
+    save_background_image_inner(data, state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn save_background_image_inner(
+    data: String,
+    state: &Arc<Mutex<AppState>>
+) -> Result<(), AppError> {
     let (data_dir, config_path) = {
         let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
         (s.data_dir.clone(), s.config_path.clone())
@@ -4140,10 +4429,19 @@ pub async fn save_background_image(
     Ok(())
 }
 
+
 /// 获取背景图片（返回 base64）
 #[tauri::command]
 pub async fn get_background_image(
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<Option<String>, AppError> {
+    get_background_image_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_background_image_inner(
+    state: &Arc<Mutex<AppState>>
 ) -> Result<Option<String>, AppError> {
     let (data_dir, bg_filename) = {
         let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
@@ -4166,10 +4464,19 @@ pub async fn get_background_image(
     Ok(Some(b64))
 }
 
+
 /// 清除背景图片
 #[tauri::command]
 pub async fn clear_background_image(
     state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<(), AppError> {
+    clear_background_image_inner(state.inner()).await
+}
+
+/// 内部复用版（供 Tauri 命令与 FFI 引擎共用）
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn clear_background_image_inner(
+    state: &Arc<Mutex<AppState>>
 ) -> Result<(), AppError> {
     let (data_dir, config_path) = {
         let s = state.lock().map_err(|e| AppError::Unknown(e.to_string()))?;
@@ -4185,4 +4492,17 @@ pub async fn clear_background_image(
     s.config.background_image = None;
     s.config.save(&config_path)?;
     Ok(())
+}
+
+/// 运行平台（前端兼容层用）
+#[tauri::command]
+pub fn get_platform() -> &'static str {
+    #[cfg(target_os = "macos")]
+    return "macos";
+    #[cfg(target_os = "windows")]
+    return "windows";
+    #[cfg(target_os = "linux")]
+    return "linux";
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    return "unknown";
 }

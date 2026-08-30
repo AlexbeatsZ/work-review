@@ -4,7 +4,15 @@
 
 Work Review is a private activity stream for people who spend long periods at a computer and need to scan where their day went. The interface has one job: turn captured activity into a fast, legible sequence without feeling like a surveillance dashboard.
 
-The desktop and mobile applications share information architecture and icon meaning, but they deliberately follow their host platforms. The Windows desktop uses Windows 11 native Fluent structure and material. Android remains a native Compose application using the compact Dark Current theme.
+The desktop and mobile applications share information architecture and icon meaning, but they deliberately follow their host platforms. The Windows desktop is a native WinUI 3 / Windows App SDK application (`desktop-winui/`) backed by the shared Rust collection engine. Android remains a native Compose application using the compact Dark Current theme.
+
+## Windows desktop architecture: WinUI 3 shell + Rust engine
+
+- `desktop-winui/` is the production Windows frontend: C# / .NET 8, Windows App SDK 1.7, unpackaged self-contained portable deployment (no MSIX, no runtime install).
+- `src-tauri` builds both the legacy Tauri shell (macOS/Linux) and, with the `ffi` feature, the `work_review_engine.dll` cdylib: `cargo build --release -p work-review --features ffi --lib`.
+- The C# app P/Invokes `engine_start` / `engine_invoke` (JSON in / JSON out, method names identical to Tauri commands) and receives `screenshot-taken`, `recording-state-changed`, and `config-changed` through an event callback.
+- Collection, storage, privacy, categorization, and data-directory behavior stay in Rust (`crates/core` + `src-tauri/src/collection.rs`), so the Windows portable build and the Tauri build share one engine and one SQLite database. Data directories, `config.json`, and `workreview.db` are unchanged by the frontend switch.
+- App identity, autostart (registry value `Work Review`), tray, and single-instance behavior must keep working across frontend swaps; the WinUI app repairs a stale autostart path on startup when `auto_start` is enabled.
 
 ## Desktop direction: Windows 11 native Fluent
 

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="WorkReview.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+
+    <Grid Padding="28,12,28,24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 页面头 + 保存 -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="2">
+                <TextBlock x:Name="PageTitle" Style="{StaticResource WaPageTitle}" />
+                <TextBlock x:Name="PageSubtitle" Style="{StaticResource WaCaption}" />
+            </StackPanel>
+            <Button
+                x:Name="SaveButton"
+                Grid.Column="1"
+                Padding="18,8"
+                CornerRadius="4"
+                Click="OnSaveClicked"
+                VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- 横向 Pivot 标签 -->
+        <muxc:SelectorBar
+            x:Name="Tabs"
+            Grid.Row="1"
+            SelectionChanged="OnTabChanged">
+            <muxc:SelectorBarItem x:Name="TabGeneral" Tag="general" IsSelected="True" />
+            <muxc:SelectorBarItem x:Name="TabPrivacy" Tag="privacy" />
+            <muxc:SelectorBarItem x:Name="TabStorage" Tag="storage" />
+        </muxc:SelectorBar>
+
+        <Grid Grid.Row="2">
+            <ProgressRing
+                x:Name="LoadingRing"
+                Width="44"
+                Height="44"
+                IsActive="True"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+
+            <Border
+                x:Name="ErrorBanner"
+                Padding="16,12"
+                CornerRadius="8"
+                Background="{StaticResource WaLayerBrush}"
+                BorderBrush="{StaticResource WaDestructiveBrush}"
+                BorderThickness="1"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="LoadErrorTitle" FontWeight="SemiBold" />
+                        <TextBlock x:Name="LoadErrorText" Style="{StaticResource WaCaption}" />
+                    </StackPanel>
+                    <Button x:Name="RetryButton" Grid.Column="1" VerticalAlignment="Center" Click="OnLoadConfig" />
+                </Grid>
+            </Border>
+
+            <ScrollViewer
+                x:Name="ContentScroll"
+                VerticalScrollBarVisibility="Auto"
+                Visibility="Collapsed">
+                <StackPanel x:Name="ContentHost" Spacing="14" MaxWidth="860" HorizontalAlignment="Stretch" />
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>
