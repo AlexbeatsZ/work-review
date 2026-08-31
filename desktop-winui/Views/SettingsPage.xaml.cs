@@ -1138,7 +1138,7 @@ public sealed partial class SettingsPage : UserControl
 
     private static IntPtr AppWindowHandle()
     {
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(MainWindow.Current);
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(MainWindow.Instance);
         return hwnd;
     }
 

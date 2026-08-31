@@ -1435,7 +1435,7 @@ public sealed partial class TimelinePage : UserControl
 
     private void OnOpenSummaryClicked(object sender, RoutedEventArgs e)
     {
-        MainWindow.Current.NavigateToSummary(_selectedDate);
+        MainWindow.Instance.NavigateToSummary(_selectedDate);
     }
 
     private void UpdateLiveClock()

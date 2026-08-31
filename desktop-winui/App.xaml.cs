@@ -11,6 +11,8 @@ public partial class App : Application
 
     // 单实例：第二个实例唤醒第一个实例后退出
     private static Mutex? _singleInstanceMutex;
+    private static EventWaitHandle? _activateEvent;
+    private readonly bool _isFirstInstance;
     private const string MutexName = "Local\\WorkReview.SingleInstance";
     private const string ActivateEventName = "Local\\WorkReview.Activate";
 
@@ -27,6 +29,19 @@ public partial class App : Application
         };
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             Crash($"AppDomain: {e.ExceptionObject}");
+
+        // 单实例边界必须早于引擎初始化。否则第二个进程会短暂打开同一数据库、
+        // 执行启动清理并拉起采集任务，然后才在 OnLaunched 中退出。
+        _singleInstanceMutex = new Mutex(true, MutexName, out _isFirstInstance);
+        _activateEvent = new EventWaitHandle(
+            false,
+            EventResetMode.AutoReset,
+            ActivateEventName);
+
+        if (!_isFirstInstance)
+        {
+            return;
+        }
 
         // 引擎在此同步启动（配置、数据库、采集线程）
         Stage("engine-start");
@@ -54,20 +69,13 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _singleInstanceMutex = new Mutex(true, MutexName, out var isFirst);
-        if (!isFirst)
+        if (!_isFirstInstance)
         {
             // 唤醒已有实例后退出
-            if (System.Threading.EventWaitHandle.TryOpenExisting(ActivateEventName, out var ev))
-            {
-                ev.Set();
-                ev.Dispose();
-            }
+            _activateEvent?.Set();
             Environment.Exit(0);
             return;
         }
-
-        GC.KeepAlive(_singleInstanceMutex);
 
         var startHidden = Environment.GetCommandLineArgs().Any(
             a => a is "--hidden" or "--minimized" or "--autostart");
@@ -97,8 +105,8 @@ public partial class App : Application
             _mainWindow.HideToTray();
         }
 
-        var activateEvent = new System.Threading.EventWaitHandle(
-            false, System.Threading.EventResetMode.AutoReset, ActivateEventName);
+        var activateEvent = _activateEvent
+            ?? throw new InvalidOperationException("单实例激活事件尚未初始化");
         _ = Task.Run(() =>
         {
             while (activateEvent.WaitOne())

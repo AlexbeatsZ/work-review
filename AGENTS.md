@@ -79,6 +79,7 @@ Set-Location mobile-android
 - `CalendarDatePicker.DateFormat` requires Windows.Globalization template tokens (`{day.integer}/{month.numeric}/{year.full}`); .NET-style `yyyy/M/d` throws formatTemplate.
 - WinUI 3 XAML compiler pass1 crashes silently (exit 1, no diagnostics) on certain `tb:TaskbarIcon` attribute/property-element combinations — build tray menus in code-behind.
 - The `get_recording_state` command returns a Rust tuple serialized as a JSON array `[is_recording, is_paused]`, not an object.
+- Acquire the named single-instance mutex and activation event before starting the Rust engine; a losing process must never open the shared SQLite database or launch collection tasks. The FFI JSON parameters must use UTF-8 marshaling (`LPUTF8Str`), and hide-to-tray requires setting `WindowEventArgs.Handled` before hiding the window.
 
 - The Android source is tracked on `codex/mobile-android-mvp`; seeing only empty source directories plus an APK on another branch does not mean the app must be reconstructed from bytecode.
 - Root `.gitignore` must use `/data/`, not `data/`, or Android package folders named `data` are silently ignored.

@@ -9,7 +9,7 @@ internal static class EngineNative
 
     public const int StartOk = 0;
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     public delegate void EngineEventCallback(IntPtr eventName, IntPtr payload);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "engine_set_event_callback")]
@@ -21,8 +21,8 @@ internal static class EngineNative
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "engine_invoke")]
     public static extern IntPtr engine_invoke(
-        [MarshalAs(UnmanagedType.LPStr)] string method,
-        [MarshalAs(UnmanagedType.LPStr)] string argsJson);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string method,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string argsJson);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "engine_free_string")]
     public static extern void engine_free_string(IntPtr ptr);

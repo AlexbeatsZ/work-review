@@ -14,7 +14,7 @@ public sealed partial class MainWindow : Window
 {
     private static MainWindow? _current;
 
-    public static MainWindow Current => _current
+    public static MainWindow Instance => _current
         ?? throw new InvalidOperationException("MainWindow 尚未创建");
 
     private TimelinePage? _timelinePage;
@@ -162,11 +162,12 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        Closed += (_, _) =>
+        Closed += (_, args) =>
         {
             // 与 Tauri 行为一致：关闭窗口仅隐藏到托盘，退出需托盘菜单
             if (!_trayQuitRequested)
             {
+                args.Handled = true;
                 HideToTray();
             }
         };
