@@ -25,7 +25,7 @@
 - Completed: deploy Windows `1.1.0` to the local PC portable folder; verified process path/version and the repaired `Work Review` registry autostart entry.
 - Completed: enable the native DWM system backdrop and rounded corners, with transparent WebView surfaces and a deterministic Mica fallback for unsupported sessions.
 - Completed: verify the real release EXE on the timeline, summary, and settings routes; the old glowing pill cards are replaced by compact grouped-list rows.
-- Completed: deploy Windows `1.0.49` to the local PC and `META-ROGALLY` as portable copies under `C:\Portable Programs\Work Review`, remove the retired installed copies, and verify the portable process path/version on both machines.
+- Completed: deploy Windows `1.1.0` (WinUI 3 native shell) to the local PC and `META-ROGALLY` as portable copies under `C:\Portable Programs\Work Review`, and verify the portable process path, version, and running state on both machines.
 - Completed: install Android `0.1.1` (`versionCode 2`) on the connected `vermeer` device with `adb install -r` and relaunch its main activity without clearing application data.
 - Completed: replace the rejected Work Ledger treatment with the cold-dark Dark Current desktop direction.
 - Completed: apply the same dark-only direction to Android navigation, overview, timeline, settings, and blocked-app management.
