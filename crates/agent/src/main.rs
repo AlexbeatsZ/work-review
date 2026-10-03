@@ -65,6 +65,8 @@ fn read_token() -> Result<String> {
 }
 fn client() -> Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
+        // Hub traffic stays on the user's direct LAN/Tailscale route.
+        .no_proxy()
         .timeout(Duration::from_secs(20))
         .connect_timeout(Duration::from_secs(5))
         .redirect(reqwest::redirect::Policy::none())
@@ -161,7 +163,9 @@ async fn main() -> Result<()> {
                 if request_permissions {
                     screenshot::has_accessibility_permission(true);
                     #[cfg(target_os = "macos")]
-                    screenshot::request_screen_capture_permission();
+                    if config.storage.screenshots_enabled {
+                        screenshot::request_screen_capture_permission();
+                    }
                 }
                 println!(
                     "{}",

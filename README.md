@@ -44,6 +44,8 @@ Windows 使用实际路径，例如 `--data-dir C:\Users\Meta\Project\Workspaces
 
 `credentials` 显示两个不同密钥：`agent_token` 交给采集端，`view_token` 输入网页。记录、统计和截图接口均需要密钥。打开 `http://中心地址:47831` 查看。服务自身不提供 TLS；跨公网部署时通过 HTTPS 反向代理访问，也可在自己的 Tailscale 网络中使用。中心密钥可以由 `WORK_REVIEW_AGENT_TOKEN` / `WORK_REVIEW_VIEW_TOKEN` 环境变量覆盖。
 
+采集端直连配置的中心地址，忽略系统及环境 HTTP 代理，避免本地/Tailscale 地址被转交给代理。Windows 中心可通过管理员 PowerShell 的 `scripts/install-hub.ps1 -BinaryPath <程序路径> -DataDir <中心目录>` 注册 SYSTEM 开机启动任务，在无人登录时继续接收数据；卸载添加 `-Uninstall`，保留数据。该脚本不自动开放防火墙，应按实际监听地址设置范围。
+
 ## Windows 采集端
 
 先复制中心的采集密钥，再从 PowerShell 初始化。默认数据目录为 `%LOCALAPPDATA%\work-review-agent`。
@@ -77,6 +79,8 @@ bash scripts/install-agent.sh "$PWD/target/release/work-review-agent"
 安装脚本复制程序到稳定路径并注册用户 LaunchAgent，在登录的桌面会话中运行。辅助功能权限用于读取窗口标题和浏览器 URL；只有开启截图才需要屏幕录制权限。先将数据目录 `bin/work-review-agent` 的程序加入系统设置相应权限，再通过 `doctor` 检查。可以用 `doctor --request-permissions` 主动触发系统权限引导，后台不会反复弹窗。
 
 macOS 安装脚本需要已经登录的图形会话。SSH 中仅能完成编译和诊断，系统隐私权限仍由本人在 Mac 本地确认。卸载：`bash scripts/install-agent.sh --uninstall`，配置与历史保留。
+
+自编译程序默认使用临时签名，更新后可能需要重新授予权限。如 Mac 已有代码签名证书，可在本地终端安装时传入第三个参数，例如 `bash scripts/install-agent.sh "$PWD/target/release/work-review-agent" "$PWD/data/agent" "Local Development Code Signing"`。脚本使用固定标识 `io.work-review.agent`，后续更新沿用已有 LaunchAgent 的程序路径和同一证书；不符合已安装签名身份的更新会在停止采集前被拒绝。脚本不会创建证书或修改钥匙串设置。后台进程的 `status` 和中心设备状态是实际权限验收依据，SSH 中的 `doctor` 可能继承 SSH 自身的授权。
 
 ## 命令调整
 

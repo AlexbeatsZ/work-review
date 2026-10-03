@@ -21,13 +21,17 @@ Frozen live OMEN settings verified 2026-10-03: record every 10 seconds, idle thr
 
 Immutable UUID records are queued locally. Server ingestion is transactional and idempotent by `(device_id, activity_id)`. Acknowledgment lists exact IDs; only acknowledged records are marked synchronized. Screenshots travel with their record. A failed request retains the local queue; bounded batches retry on the next cycle. Persist metadata even if screenshot or OCR fails. Only one collector may own a data directory at a time. Heartbeats include paused/idle/locked/permission/error state and backlog.
 
+Collectors connect directly to their configured hub and disable inherited HTTP proxies. A Windows hub may run under SYSTEM at startup because it does not inspect a user's desktop; collectors still require an interactive user session. Login/startup wrapper invocations use process-scoped PowerShell execution policy so deployment does not change global policy.
+
 ## Hub and time
 
 Separate collector and viewer secrets; protect all data and screenshot endpoints. Never put credentials in URLs. No cross-origin access by default. Embed frontend assets in the hub binary. UTC epoch seconds are stored; browser day bounds define query intervals. Clip intervals at day/hour boundaries. Display both union activity time and summed device time so simultaneous use does not inflate the main activity total. Device filters apply to summary, chart, list and report consistently. Timeline uses stable cursor pagination and search applies to the whole selected range.
 
 ## Service lifecycle
 
-Provide scripts to install/uninstall a Windows interactive logon task or macOS user LaunchAgent. Scripts take explicit data/binary paths, quote paths safely and never require administrator/root privileges. Do not run installation scripts during this source task. macOS accessibility/screen-recording permissions require local user approval; `doctor` explains missing permissions, background execution never repeatedly prompts.
+Provide scripts to install/uninstall a Windows interactive logon task or macOS user LaunchAgent. Collector scripts take explicit data/binary paths, quote paths safely and never require administrator/root privileges; the Windows SYSTEM hub installer requires an elevated session. Live deployment is separately authorized by the user. macOS accessibility/screen-recording permissions require local user approval; `doctor` explains missing permissions, background execution never repeatedly prompts, and permission requests for screen recording occur only when screenshots are enabled.
+
+macOS updates use a stable installed path. An optional existing signing identity signs the staged binary with identifier `io.work-review.agent`. If the installed binary has a certificate-backed designated requirement, the replacement must satisfy it before the running collector is stopped. Ad hoc signatures bind privacy authorization to one build and cannot preserve it across changes. Verify the LaunchAgent's actual state rather than SSH-inherited permission checks.
 
 ## Existing records
 

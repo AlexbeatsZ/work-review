@@ -5,10 +5,18 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $taskName = 'WorkReviewAgent-' + $env:USERNAME
+$taskData = [IO.Path]::GetFullPath($DataDir)
+$taskCopy = Join-Path $taskData 'bin\work-review-agent.exe'
+function Stop-AgentRuntime {
+    Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    # A stopped wrapper can leave its child alive; stop only this installed binary.
+    Get-Process -Name work-review-agent -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -eq $taskCopy } | Stop-Process -Force
+}
 if ($Uninstall) {
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task) {
-        Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+        Stop-AgentRuntime
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
     }
     Write-Output 'Login task removed; configuration and records preserved.'
@@ -16,16 +24,14 @@ if ($Uninstall) {
 }
 if (-not $BinaryPath) { throw 'Provide -BinaryPath pointing to work-review-agent.exe' }
 $taskBinary = (Resolve-Path -LiteralPath $BinaryPath).Path
-$taskData = [IO.Path]::GetFullPath($DataDir)
 if (-not (Test-Path -LiteralPath (Join-Path $taskData 'config.json'))) { throw 'Run agent init with this data directory first' }
 $taskUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existingTask) {
-    Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    Stop-AgentRuntime
 }
 $taskBinDir = Join-Path $taskData 'bin'
 New-Item -ItemType Directory -Force -Path $taskBinDir | Out-Null
-$taskCopy = Join-Path $taskBinDir 'work-review-agent.exe'
 if ($taskBinary -ne $taskCopy) {
     for ($attempt = 0; ; $attempt++) {
         try { Copy-Item -LiteralPath $taskBinary -Destination $taskCopy -Force; break }
@@ -34,7 +40,7 @@ if ($taskBinary -ne $taskCopy) {
 }
 $taskRunner = Join-Path $taskBinDir 'run-agent.ps1'
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'run-agent.ps1') -Destination $taskRunner -Force
-$taskArguments = '-NoProfile -NonInteractive -WindowStyle Hidden -File "' + $taskRunner + '" -BinaryPath "' + $taskCopy + '" -DataDir "' + $taskData + '"'
+$taskArguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $taskRunner + '" -BinaryPath "' + $taskCopy + '" -DataDir "' + $taskData + '"'
 $taskAction = New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'powershell.exe') -Argument $taskArguments
 if (-not (Test-Path -LiteralPath $taskAction.Execute)) {
     $taskAction = New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'pwsh.exe') -Argument $taskArguments
