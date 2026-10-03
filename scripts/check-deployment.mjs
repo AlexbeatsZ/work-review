@@ -2,14 +2,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 
-// Read the private hub config from disk so keys never appear in command arguments.
+// Read a private viewer-key file or hub config; keys never appear in arguments.
 const [url, configPath, output = 'artifacts/deployment'] =
   process.argv.slice(2);
 if (!url || !configPath)
   throw new Error(
-    'Usage: node scripts/check-deployment.mjs <hub-url> <private-hub-config> [output-directory]',
+    'Usage: node scripts/check-deployment.mjs <hub-url> <private-key-or-config> [output-directory]',
   );
-const { view_token: key } = JSON.parse(await fs.readFile(configPath, 'utf8'));
+const credentials = (await fs.readFile(configPath, 'utf8')).trim();
+const key = credentials.startsWith('{')
+  ? JSON.parse(credentials).view_token
+  : credentials;
+if (!key) throw new Error('Viewer key file is empty');
 const browser = await chromium.launch({
   channel: process.platform === 'win32' ? 'msedge' : undefined,
   args: ['--no-proxy-server'],

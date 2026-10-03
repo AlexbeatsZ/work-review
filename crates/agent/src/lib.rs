@@ -10,6 +10,8 @@ pub mod config {
 pub mod error;
 #[cfg(any(windows, target_os = "macos"))]
 pub mod idle_detector;
+#[cfg(target_os = "macos")]
+mod macos_window;
 #[cfg(any(windows, target_os = "macos"))]
 pub mod monitor;
 #[cfg(any(windows, target_os = "macos"))]

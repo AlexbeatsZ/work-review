@@ -1,4 +1,4 @@
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "windows")]
 use crate::error::AppError;
 use crate::error::Result;
 use once_cell::sync::Lazy;
@@ -1405,8 +1405,7 @@ mod tests {
         extract_active_tab_url_from_session_store_value, extract_url_from_title,
         firefox_family_profile_dir_from_ini, is_browser_app, is_probable_domain,
         normalize_display_app_name, normalize_macos_frontmost_app_name, normalize_possible_url,
-        parse_macos_window_bounds_fields, remember_browser_url_log,
-        semantic_category_to_base_category, WindowBounds,
+        remember_browser_url_log, semantic_category_to_base_category,
     };
     use std::collections::HashMap;
     use std::path::Path;
@@ -1451,19 +1450,6 @@ mod tests {
         assert_eq!(categorize_app("QQ Browser", "example.com"), "browser");
         assert_eq!(categorize_app("360 Browser", "example.com"), "browser");
         assert_eq!(categorize_app("Sogou Browser", "example.com"), "browser");
-    }
-
-    #[test]
-    fn macos前台窗口坐标字段应解析为窗口边界() {
-        assert_eq!(
-            parse_macos_window_bounds_fields(Some("1512"), Some("64"), Some("1512"), Some("982"),),
-            Some(WindowBounds {
-                x: 1512,
-                y: 64,
-                width: 1512,
-                height: 982,
-            })
-        );
     }
 
     #[test]
@@ -1892,118 +1878,32 @@ pub fn get_active_window_fast() -> Result<ActiveWindow> {
     get_active_window_with_options(false)
 }
 
-#[cfg(any(target_os = "macos", test))]
-fn parse_macos_window_bounds_fields(
-    x: Option<&str>,
-    y: Option<&str>,
-    width: Option<&str>,
-    height: Option<&str>,
-) -> Option<WindowBounds> {
-    let x = x?.trim().parse::<i32>().ok()?;
-    let y = y?.trim().parse::<i32>().ok()?;
-    let width = width?.trim().parse::<u32>().ok()?;
-    let height = height?.trim().parse::<u32>().ok()?;
-
-    if width == 0 || height == 0 {
-        return None;
-    }
-
-    Some(WindowBounds {
-        x,
-        y,
-        width,
-        height,
-    })
-}
-
 #[cfg(target_os = "macos")]
 fn get_active_window_with_options(include_browser_url: bool) -> Result<ActiveWindow> {
-    // 使用 AppleScript 获取活动应用信息
-    let script = r#"
-        tell application "System Events"
-            set frontApp to first application process whose frontmost is true
-            set appName to name of frontApp
-            set bundleId to ""
-            set appPath to ""
-            set windowTitle to ""
-            set windowX to ""
-            set windowY to ""
-            set windowWidth to ""
-            set windowHeight to ""
-            set sep to character id 31
-            try
-                set bundleId to bundle identifier of frontApp
-            end try
-            try
-                set appPath to POSIX path of (file of frontApp as alias)
-            end try
-            try
-                set windowTitle to name of front window of frontApp
-            end try
-            try
-                set {windowX, windowY} to position of front window of frontApp
-                set {windowWidth, windowHeight} to size of front window of frontApp
-            end try
-            return appName & sep & bundleId & sep & appPath & sep & windowTitle & sep & windowX & sep & windowY & sep & windowWidth & sep & windowHeight
-        end tell
-    "#;
-
-    let output = run_monitor_command_with_timeout(
-        Command::new("osascript").arg("-e").arg(script),
-        "macOS 活动窗口采集",
-    )
-    .map_err(|e| AppError::Screenshot(e.to_string()))?;
-
-    if output.status.success() {
-        let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        let parts: Vec<&str> = result.split('\u{1f}').collect();
-
-        let raw_app_name = parts.first().copied().unwrap_or("Unknown").to_string();
-        let bundle_identifier = parts
-            .get(1)
-            .map(|value| value.trim())
-            .filter(|value| !value.is_empty());
-        let app_path = parts
-            .get(2)
-            .map(|value| value.trim())
-            .filter(|value| !value.is_empty());
-        let raw_window_title = parts.get(3).copied().unwrap_or("").to_string();
-        let window_bounds = parse_macos_window_bounds_fields(
-            parts.get(4).copied(),
-            parts.get(5).copied(),
-            parts.get(6).copied(),
-            parts.get(7).copied(),
-        )
-        .or_else(|| find_frontmost_window_bounds(&raw_app_name, &raw_window_title));
-
-        // 对 Electron / Helper 类通用进程做名称还原，优先使用 app path / bundle id。
-        let app_name = normalize_macos_frontmost_app_name(
-            &raw_app_name,
-            &raw_window_title,
-            bundle_identifier,
-            app_path,
-        );
-
-        let window_title = clean_browser_window_title(&raw_window_title, &app_name);
-
-        // 如果是浏览器，尝试获取 URL（使用原始标题，清理后的标题可能丢失 URL 信息）
-        let browser_url = if include_browser_url {
-            get_browser_url(&app_name, &raw_window_title)
-        } else {
-            None
-        };
-
-        Ok(ActiveWindow {
-            app_name,
-            window_title,
-            browser_url,
-            executable_path: app_path.map(str::to_string),
-            window_bounds,
-            is_minimized: false,
-        })
+    let native = crate::macos_window::frontmost_window()?;
+    let app_name = normalize_macos_frontmost_app_name(
+        &native.app_name,
+        &native.title,
+        Some(&native.bundle_identifier),
+        Some(&native.app_path),
+    );
+    let window_bounds = native
+        .bounds
+        .or_else(|| find_frontmost_window_bounds(&native.app_name, &native.title));
+    let window_title = clean_browser_window_title(&native.title, &app_name);
+    let browser_url = if include_browser_url {
+        get_browser_url(&app_name, &native.title)
     } else {
-        Err(AppError::Screenshot("获取活动窗口失败".to_string()))
-    }
+        None
+    };
+    Ok(ActiveWindow {
+        app_name,
+        window_title,
+        browser_url,
+        executable_path: (!native.app_path.is_empty()).then_some(native.app_path),
+        window_bounds,
+        is_minimized: false,
+    })
 }
 
 #[cfg(target_os = "macos")]

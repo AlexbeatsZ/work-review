@@ -26,6 +26,8 @@ Mac originally had no Work Review collector. Its approved stable program path is
 
 The Mac binary is signed with the existing `Local Development Code Signing` identity and identifier `io.work-review.agent`. This reuses the existing keychain certificate without adding a certificate or changing keychain policy. Updates must preserve that identity: run the Mac installer locally with the original signing identity as its third argument. The installer preserves the existing LaunchAgent program path and checks the replacement against the installed designated requirement before stopping the collector. The first accessibility grant was bound to the old ad hoc build; TCC logs confirmed a code-hash mismatch. The user re-added the signed project `bin` executable; the LaunchAgent was configured to use that authorized path and actual new capture was verified.
 
+Window metadata now uses native NSWorkspace/AX calls. The deployed System Events subprocess approach intermittently exceeded its timeout in the GUI LaunchAgent, despite fast SSH probes. Native reads retain the same accessibility/privacy boundary and bound per-object messaging timeouts; browser-specific optional URL collection remains separate from the core window read.
+
 ## Lifecycle and checks
 
 Windows tasks permit battery operation, have no execution time limit and retry failed exits after one minute. Mac's LaunchAgent uses `RunAtLoad`, `KeepAlive`, the logged-in Aqua session and a 30-second restart throttle. The ROG hub needs no interactive login. PowerShell startup wrappers apply execution policy only to their own process; no global execution policy was changed. Windows installers explicitly stop the exact installed child binary after stopping its task wrapper, preventing stale processes from locking updates.
@@ -52,10 +54,10 @@ launchctl kickstart -k gui/$(id -u)/io.work-review.agent
 The live browser check can be repeated without putting secrets in arguments:
 
 ```bash
-node scripts/check-deployment.mjs http://100.106.169.46:47831 <private-hub-config-path>
+node scripts/check-deployment.mjs http://100.106.169.46:47831 data/rog-view-key.txt
 ```
 
-It logs only sanitized device status and saves a local screenshot under `artifacts/deployment/`. The browser check does not edit records. Cold boot / logout were not forced during deployment; the effective startup definitions and live process sessions were checked directly.
+It accepts a private viewer-key text file or hub config, logs only sanitized device status and saves a local screenshot under `artifacts/deployment/`. The browser check does not edit records. Cold boot / logout were not forced during deployment; the effective startup definitions and live process sessions were checked directly.
 
 ## Rollback
 

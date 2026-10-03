@@ -51,8 +51,12 @@ macOS 原有 Objective-C 依赖 `block 0.1.6` 有 Rust 未来兼容警告，当�
 | 旧记录 | OMEN 当前旧数据库只读导入并上传 54,006 条；原程序、配置、数据库保留，旧桌面自启动入口已保存并退役 |
 | 默认配置 | 10 秒采样、5 分钟闲置、截图/OCR 关闭；既有隐私规则保持 |
 | 网络回归 | 继承不可达 HTTP/HTTPS/ALL_PROXY 的 CLI 子进程仍能直接连中心；Windows 与 Mac 测试通过，没有改全局代理 |
-| Windows 工作区 | 46 项测试通过；Release 编译、格式检查与安装脚本语法检查通过 |
+| Windows 工作区 | 45 项测试通过；Release 编译、格式检查与安装脚本语法检查通过。移除了仅用于旧 Mac 脚本坐标解析的测试 |
 | macOS arm64 工作区 | 52 项测试通过；Release 编译和安装脚本 `bash -n` 通过 |
 | 实际 Edge 前端 | 登录成功，显示 OMEN/Mac 两台设备；两端过去一天的已上传记录查询成功，无页面 JS 错误 |
 
-ROG 的数据目录限制 Meta/SYSTEM/Administrators 访问，查看密钥单独保存在 OMEN 私有 `data/rog-view-key.txt` 中；密钥不进入 Git、命令参数或验收输出。截图保持关闭，没有申请屏幕录制权限。Mac 启用权限后短暂出现窗口读取超时，随后恢复采集；重启 LaunchAgent 后继续采集与上传通过。
+ROG 的数据目录限制 Meta/SYSTEM/Administrators 访问，查看密钥单独保存在 OMEN 私有 `data/rog-view-key.txt` 中；密钥不进入 Git、命令参数或验收输出。截图保持关闭，没有申请屏幕录制权限。Mac 的 System Events 窗口读取在 GUI 后台进程中反复出现超时，已替换为 NSWorkspace/AXUIElement 原生读取；Core Foundation 字符串类型与 Unicode 边界测试通过。新版本重用原签名证书和已授权路径，更新后权限保持有效。
+
+部署提交 `61eee42` 的 [四平台 CI](https://github.com/AlexbeatsZ/work-review/actions/runs/37157374619) 全部通过；后续原生 Mac 采集修正已通过本地 Windows/Mac 工作区检查。
+
+原生采集部署后连续观察 12 次、约 2 分钟：每次均为 `recording`，期间新增 11 条记录，未出现窗口读取错误。ROG 再次确认两端最新记录已入库。签名升级过程未重新申请权限。

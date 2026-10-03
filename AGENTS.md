@@ -9,7 +9,7 @@ Work Review is a personal activity recorder: quiet Windows/macOS agents collect 
 - Immutable local SQLite queue, retry-safe uploads, per-device and union-time overview, notes, search, screenshots/OCR and Markdown export are implemented.
 - Defaults match the live OMEN settings: 10-second sampling, 5-minute idle threshold, screenshots/OCR off, existing privacy rules. Init imports previous capture/privacy JSON; legacy database import is explicit and read-only.
 - Deployed: OMEN interactive logon collector, Mac GUI LaunchAgent collector and ROG SYSTEM startup hub. Hub URL `http://100.106.169.46:47831/` uses the existing Tailscale network; 54,006 old OMEN records were imported read-only and uploaded. Defaults and device identities are preserved. See [deployment](docs/deployment.md) for paths, lifecycle and rollback.
-- Mac runs the user-authorized, certificate-signed `bin/work-review-agent` in its project. New records are being captured; screen recording remains unapproved/off. macOS updates must preserve the existing certificate and runtime path.
+- Mac runs the user-authorized, certificate-signed `bin/work-review-agent` in its project. Window metadata uses direct native AppKit/AX calls, avoiding recurring System Events subprocess timeouts. New records are being captured; screen recording remains unapproved/off. macOS updates must preserve the existing certificate and runtime path.
 - Design index: [background-hub](docs/design/background-hub.md). Read before changing capture, sync, authentication, time accounting or service lifecycle.
 
 # Active Work

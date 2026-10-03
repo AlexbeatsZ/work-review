@@ -33,6 +33,8 @@ Provide scripts to install/uninstall a Windows interactive logon task or macOS u
 
 macOS updates use a stable installed path. An optional existing signing identity signs the staged binary with identifier `io.work-review.agent`. If the installed binary has a certificate-backed designated requirement, the replacement must satisfy it before the running collector is stopped. Ad hoc signatures bind privacy authorization to one build and cannot preserve it across changes. Verify the LaunchAgent's actual state rather than SSH-inherited permission checks.
 
+Frontmost macOS application/window metadata uses NSWorkspace and direct AXUIElement calls with bounded messaging timeouts and owned Core Foundation values. Do not depend on System Events/osascript for the core capture: live GUI LaunchAgent deployment exposed recurring subprocess timeouts even while SSH probes succeeded. Browser-specific optional URL helpers remain separate; their failure must not suppress the activity record.
+
 ## Existing records
 
 Provide an explicit read-only import of old `workreview.db` with deterministic new IDs so repeated imports do not duplicate data. Preserve screenshot, OCR and intent-note fields where present. Old data and configuration remain in place. Import copies into the new agent queue; it never opens the old database for writing.
