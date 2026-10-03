@@ -20,12 +20,17 @@
 | macOS 原生 Vision OCR | 实际识别合成界面图 588 个字符，含引号路径正确传参 |
 | Windows 系统原生 OCR | 实际识别同一界面图 401 个字符，含引号路径正确转义 |
 | npm 依赖审计 | 0 个已知漏洞 |
+| GitHub CI 四个平台 | Windows、Apple Silicon、Intel Mac、Linux 全部通过；Windows / Linux 浏览器测试通过 |
 
 存储与 HTTP 测试覆盖离线队列恢复、重复上传、备注不被重试覆盖、未同步数据不清理、跨日期/小时裁剪、重叠时段合并、分页稳定性、搜索范围、采集/查看密钥分离及无权限截图请求。生命周期测试覆盖全新目录首次启动、暂停、重复进程拒绝和停止状态。
 
 Mac 首次临时运行发现 SQLite 并发首次初始化会报锁定，已调整为先创建 WAL/表，再启动采集与同步循环；回归测试与实际运行均通过。Mac 检查结果为辅助功能已授权、屏幕录制未授权。默认截图关闭，窗口活动采集已实测；若以后开启截图，仍需本人在系统设置中给稳定路径的程序授予屏幕录制权限。
 
-本地构建产物保存在 `artifacts/windows/` 与 `artifacts/macos-arm64/`；界面验收图为 `artifacts/dashboard-desktop.png` 和 `artifacts/dashboard-mobile.png`。这些产物不进入 Git。现阶段没有永久部署中心、替换旧应用或注册开机启动；Intel Mac / Linux 的验证由仓库 CI 补充。
+本地构建产物保存在 `artifacts/windows/` 与 `artifacts/macos-arm64/`，另有对应 ZIP / tar.gz 程序包；界面验收图为 `artifacts/dashboard-desktop.png` 和 `artifacts/dashboard-mobile.png`。这些产物不进入 Git。现阶段没有永久部署中心、替换旧应用或注册开机启动。
+
+核心重构提交 `d06a7d7` 的四平台 [GitHub CI](https://github.com/AlexbeatsZ/work-review/actions/runs/37105005866) 全部通过。随后只更新本文与项目/任务日志的验收结果。
+
+Mac 临时验证目录已删除。Windows 临时目录 `C:\Users\Meta\AppData\Local\Temp\.agents\work-review-verify-20261003` 的目录清理被执行策略拒绝（`blocked by policy`），保留了测试数据库和源码归档；测试密钥文件以及临时中心/已配对采集端配置已逐项删除。所有临时采集端、中心及 SSH 转发已结束。
 
 macOS 原有 Objective-C 依赖 `block 0.1.6` 有 Rust 未来兼容警告，当前构建通过。屏幕截图实际采集不属于默认关闭配置的验收范围；图像归档、尺寸/多屏坐标和受保护的网页回看已有测试。
 

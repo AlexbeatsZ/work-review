@@ -14,7 +14,7 @@ Work Review is a personal activity recorder: quiet Windows/macOS agents collect 
 # Active Work
 
 - Completed: headless capture/sync, Chinese hub dashboard, CLI configuration reload, stable identity, opt-in logon/LaunchAgent scripts and read-only legacy import.
-- Completed: storage/time/privacy/authentication/offline sync/lifecycle tests, browser tests and both native release builds. See [validation](docs/validation.md).
+- Completed: storage/time/privacy/authentication/offline sync/lifecycle tests, browser tests and both native release builds. Four-platform GitHub CI passed for core refactor `d06a7d7`; see [validation](docs/validation.md).
 - Deployment remains separate: choose a durable hub location, configure devices and install login services with user authorization.
 
 # Build / Run / Test
