@@ -16,7 +16,7 @@ Work Review is a personal activity recorder: quiet Windows/macOS agents collect 
 
 - Completed: headless capture/sync, Chinese hub dashboard, CLI configuration reload, stable identity, opt-in logon/LaunchAgent scripts and read-only legacy import.
 - Completed: storage/time/privacy/authentication/offline sync/lifecycle tests, browser tests and both native release builds. Four-platform GitHub CI passed for core refactor `d06a7d7`; see [validation](docs/validation.md).
-- Completed: authorized deployment, direct hub networking, narrow Tailscale firewall rule, old desktop startup retirement and existing-certificate macOS signing. Both collectors generate new records that arrive at ROG, including after task/LaunchAgent restarts. Deployment follow-up CI is pending; see [validation](docs/validation.md).
+- Completed: authorized deployment, direct hub networking, narrow Tailscale firewall rule, old desktop startup retirement and existing-certificate macOS signing. Both collectors generate new records that arrive at ROG, including after task/LaunchAgent restarts. Native capture and dashboard search fixes in code commit `261af74` passed all four CI platforms; see [validation](docs/validation.md).
 
 # Build / Run / Test
 
