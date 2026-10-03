@@ -250,7 +250,7 @@ pub fn normalize_display_app_name(app_name: &str) -> String {
         "iina" => "IINA".to_string(),
         "apple music" | "music" => "Music".to_string(),
         // ── 开发工具 ──
-        "docker desktop" | "docker desktop" => "Docker Desktop".to_string(),
+        "docker desktop" => "Docker Desktop".to_string(),
         "postman" => "Postman".to_string(),
         "insomnia" => "Insomnia".to_string(),
         "fork" | "fork-git-client" => "Fork".to_string(),

@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
     "crates/core",
-    "src-tauri",
+    "crates/agent",
+    "crates/server",
 ]
 
 [profile.release]

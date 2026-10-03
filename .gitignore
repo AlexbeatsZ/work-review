@@ -63,3 +63,8 @@ src-tauri/icons.backup/
 .worktrees/
 .superpowers/
 target/
+artifacts/
+test-results/
+playwright-report/
+*.db-wal
+*.db-shm

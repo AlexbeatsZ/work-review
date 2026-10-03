@@ -1,0 +1,34 @@
+# Background agents and central hub
+
+## Scope
+
+The user wants a quiet recorder on several personal computers, one aggregate frontend and macOS support, with current settings frozen or adjustable by commands. Chinese is the only UI language. Replace the previous Lite Phase 2 desktop direction. Keep capture, privacy, screenshot review and manual context; remove Tauri, model-provider UI, translations and desktop-only settings. Existing data directories are never deleted or modified by this refactor.
+
+## Modules
+
+- `core`: small shared configuration, activity protocol, privacy rules and SQLite storage. This is the durable data interface.
+- `agent`: Windows/macOS adapters and capture/sync scheduling. UI lifetime has no effect on recording. Stable device UUID is persisted once; hostname is a label.
+- `server`: authenticated ingest and queries, screenshot storage, embedded static web assets. It can run on Windows, macOS or Linux.
+- `src`: Chinese Svelte dashboard, browser HTTP only.
+
+Linux desktop adapters, floating-window aggregation and duplicate category logic are removed. Linux remains supported for the hub. Classification is owned by `core`.
+
+## Capture and configuration
+
+Frozen live OMEN settings verified 2026-10-03: record every 10 seconds, idle threshold 5 minutes, screenshots/OCR disabled, no work-hour filtering, all displays, adaptive image width, JPEG quality 85, screenshots retained 3 days, metadata 30 days, storage limit 2048 MB. Init can import the currently saved desktop JSON capture/privacy fields. Do not copy AI credentials or desktop settings. Local unsynchronized records/screenshots must never be removed by retention. Lock/idle/sleep and failed captures do not accrue long gaps as work. Configuration changes are validated and reloaded during recording. Native OCR only; no Python/model downloads.
+
+## Synchronization
+
+Immutable UUID records are queued locally. Server ingestion is transactional and idempotent by `(device_id, activity_id)`. Acknowledgment lists exact IDs; only acknowledged records are marked synchronized. Screenshots travel with their record. A failed request retains the local queue; bounded batches retry on the next cycle. Persist metadata even if screenshot or OCR fails. Only one collector may own a data directory at a time. Heartbeats include paused/idle/locked/permission/error state and backlog.
+
+## Hub and time
+
+Separate collector and viewer secrets; protect all data and screenshot endpoints. Never put credentials in URLs. No cross-origin access by default. Embed frontend assets in the hub binary. UTC epoch seconds are stored; browser day bounds define query intervals. Clip intervals at day/hour boundaries. Display both union activity time and summed device time so simultaneous use does not inflate the main activity total. Device filters apply to summary, chart, list and report consistently. Timeline uses stable cursor pagination and search applies to the whole selected range.
+
+## Service lifecycle
+
+Provide scripts to install/uninstall a Windows interactive logon task or macOS user LaunchAgent. Scripts take explicit data/binary paths, quote paths safely and never require administrator/root privileges. Do not run installation scripts during this source task. macOS accessibility/screen-recording permissions require local user approval; `doctor` explains missing permissions, background execution never repeatedly prompts.
+
+## Existing records
+
+Provide an explicit read-only import of old `workreview.db` with deterministic new IDs so repeated imports do not duplicate data. Preserve screenshot, OCR and intent-note fields where present. Old data and configuration remain in place. Import copies into the new agent queue; it never opens the old database for writing.

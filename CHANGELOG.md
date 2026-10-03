@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Background runtime 0.2.0 - 2026-10-03
+
+- Replace the Tauri desktop runtime with quiet Windows/macOS collectors and one standalone HTTP hub containing a Chinese dashboard.
+- Remove translations, AI provider setup, desktop presentation settings and Linux desktop capture adapters. Retain system-native capture, privacy, idle/lock handling and optional screenshots/OCR.
+- Add immutable local queues, retry-safe authenticated uploads, stable device identity and validated CLI configuration reload.
+- Add device/date filters, cross-device union time, searchable timelines, screenshots, notes and Markdown export.
+- Supply opt-in Windows interactive logon and macOS LaunchAgent scripts and a repeatable read-only importer for previous desktop records.
+- Validate Windows/macOS builds, real two-device synchronization and desktop/mobile browser workflows. Original desktop history remains on `lite-phase-2`.
+
 ## [1.0.46] - 2026-05-09
 
 ### 修复

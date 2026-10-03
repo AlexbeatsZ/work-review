@@ -1,261 +1,126 @@
-<p align="center">
-  <img src="src-tauri/icons/icon.png" width="100" alt="Work Review">
-</p>
+# Work Review
 
-<h1 align="center">Work Review</h1>
+个人多设备工作记录：**Windows / macOS 后台采集，一处集中回顾。**
 
-<p align="center">
-  <strong>面向个人的、本地优先的工作记录与复盘工具。</strong>
-</p>
+采集端是独立 Rust 程序，没有桌面窗口、托盘或 WebView。它先把活动写入本机 SQLite，再同步到自己的中心服务；中心离线期间继续记录，恢复连接后补传。中心服务内嵌中文网页，可从任意设备的浏览器访问。
 
-<p align="center">
-  自动整理你一天里使用过的应用、访问过的网站、窗口标题和可选截图记录，生成一条可回看、可追问的工作时间线。
-</p>
+```text
+Windows 采集端 ─ 本地队列 ─┐
+                          ├─ 中心服务 / SQLite / 截图 ─ 浏览器
+macOS 采集端 ── 本地队列 ─┘
+```
 
-<p align="center">
-  所有数据默认仅保存在本地设备，不上传任何服务器。AI 功能完全可选；关闭后照常使用。
-</p>
+网页提供设备状态、按设备/日期筛选的时间线、窗口和内容搜索、应用时长、截图/OCR 回看、备注编辑与 Markdown 统计导出。主活跃时间合并多个设备的重叠时段，另列设备累计时长。
 
-<p align="center">
-  <a href="./README.md">中文</a> · <a href="./README.tw.md">繁體中文</a> · <a href="./README.en.md">English</a>
-</p>
+## 已固定的默认配置
 
-<p align="center">
-  <a href="https://github.com/wm94i/Work_Review/releases/latest">
-    <img src="https://img.shields.io/github/v/release/wm94i/Work_Review?style=flat-square&color=blue" alt="Release">
-  </a>
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
-  <img src="https://img.shields.io/badge/%F0%9F%94%92%20all%20data%20local-green?style=flat-square" alt="All Data Local">
-  <img src="https://img.shields.io/github/license/wm94i/Work_Review?style=flat-square" alt="License">
-</p>
+以原应用在 OMEN 上的实际设置为基准：10 秒采样、5 分钟空闲阈值、全天记录、截图/OCR 关闭。保留原隐私规则。截图开启时使用全屏幕、自适应宽度、JPEG 85；本机已同步截图保留 3 天、元数据 30 天，截图空间上限 2048 MB。
 
----
+未同步数据不参与自动清理。中心记录长期保存，不受采集端的本地清理影响。截图/OCR 都是可选项；仅使用系统原生 OCR，不下载 Python 或模型。
 
-## 它适合做什么
+## 构建
 
-Work Review 适合个人用户用来回答这些问题：
-
-- 我今天到底做了什么？
-- 这几天主要在推进什么？
-- 某个任务大概花了多少时间？
-- 我当时看过哪个页面、哪个窗口、哪些上下文？
-- 今天的日报怎么快速整理出来？
-
-它的重点不是"监督"，而是帮助你**回忆、整理和复盘**自己的工作过程。
-
----
-
-## 核心特点
-
-- **自动记录工作轨迹** — 自动整理前台应用、网站访问、窗口标题、可选截图和 OCR 文本，尽量减少手动补记和事后回忆
-- **一条统一的工作时间线** — 概览、时间线、工作助手、日报共用同一份底层记录，既能看统计，也能追到具体页面和上下文
-- **直接回答工作问题** — 基于本地记录回答"今天做了什么""最近主要在推进什么""有哪些待办"
-- **日报生成与导出** — 结构化日报、历史回看、Markdown 导出与自动导出、AI 增强下的附加提示词和段落级编辑
-- **桌面化身 Beta** — 迈向个人工作 Agent 的第一步，未来将成为能感知工作上下文、主动提醒和辅助决策的桌面伙伴
-- **隐私优先，本地可控** — 数据存本地 SQLite；AI 默认可不启用，模型调用使用你自己的 API Key，不经第三方中转
-
----
-
-## 界面预览
-
-<p align="center">
-  <img src="docs/Introduction_zh/概览.png" alt="概览" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/Introduction_zh/助手.png" alt="工作助手" width="720" />
-</p>
-
----
-
-## 隐私与边界
-
-Work Review 从设计上面向个人使用，不适用于：员工监控 · 团队考勤 · 绩效考核 · 隐形追踪
-
-你可以按需控制记录范围：
-
-- 按应用设置为「正常 / 脱敏 / 忽略」，脱敏模式自动跳过截图和 OCR
-- 敏感关键词自动过滤 · 域名黑名单
-- 锁屏自动暂停 · 手动暂停/恢复
-- AI 仅在你主动配置模型后启用，默认关闭
-
----
-
-## 主要功能
-
-### 自动记录
-
-- 自动识别前台应用，记录使用时长、窗口标题和分类
-- 识别浏览器 URL，按站点/页面聚合访问记录
-- 定时截图并提取 OCR 文本，支持多屏策略
-- 键鼠 + 屏幕空闲检测，减少挂机误记
-- 时间线回看某个时段的具体上下文
-
-### 智能整理
-
-- 工作助手：基于本地记录做问答，支持多模型切换
-- 自动识别"昨天""本周""最近 N 天"等自然语言时间范围
-- 碎片活动聚合为连续工作 Session
-- 从页面、窗口标题和上下文中提炼可能的后续待办
-- 基础模板与 AI 增强两种回答模式
-
-### 日报与复盘
-
-- 生成结构化日报，支持历史回看
-- Markdown 导出与自动导出
-- 按小时活跃度汇总
-- AI 增强下的附加提示词与段落编辑
-- 网站语义分类：修改域名分类后自动回填历史
-- 多段工作时间：如上午 + 下午，休息时间不计入
-
----
-
-## AI 模式
-
-Work Review 的核心始终是**本地记录**。AI 的作用是让记录更容易阅读和复盘，而不是使用前提。
-
-| 模式 | 说明 |
-|------|------|
-| **基础模板** | 零配置，输出稳定的结构化结果 |
-| **AI 增强** | 调用你自行配置的模型服务，让问答和总结更自然 |
-
-支持的提供商：Ollama (本地) / OpenAI 兼容 / DeepSeek / 通义千问 / 智谱 / Kimi / 豆包 / MiniMax / SiliconFlow / Gemini / Claude
-
----
-
-## 快速开始
-
-1. 从 [Releases](https://github.com/wm94i/Work_Review/releases/latest) 下载对应平台安装包
-2. macOS 需授予屏幕录制、辅助功能权限
-3. 保持后台运行一段时间
-4. 回到概览 / 时间线 / 日报查看当天记录
-
-| 平台 | 安装包 |
-|------|--------|
-| macOS (Apple Silicon / Intel) | `.dmg` |
-| Windows | `.exe` |
-| Linux x86_64 (X11 / Wayland) | `.deb` / `.AppImage` |
-| Linux ARM64 (aarch64) | `.deb` |
-
-**macOS：** 截图需「屏幕录制」权限，桌宠联动需「辅助功能 + 输入监控」。首次提示"已损坏"时：`sudo xattr -rd com.apple.quarantine "/Applications/Work Review.app"`
-
-**Windows：** 依赖 Microsoft Edge WebView2 Runtime。
-
-**Linux：** 截图和窗口追踪依赖当前会话类型与工具链。<details><summary>依赖说明</summary>
+需要现有的 Node.js 20.19+、Rust stable 和各平台原生编译工具链。
 
 ```bash
-# 基础
-sudo apt install xprintidle tesseract-ocr
-# X11
-sudo apt install xdotool x11-utils scrot
-# Wayland: gdbus (GNOME) / kdotool (KDE) / swaymsg (Sway) / hyprctl (Hyprland)
-# 截图: grim / gnome-screenshot / spectacle
+npm ci
+npm run build
+cargo build --release --workspace
 ```
 
-</details>
+构建产物在 `target/release/`：`work-review-agent` 与 `work-review-server`，Windows 对应 `.exe`。发行包将程序放在解压目录的根目录，下文 `target/release/` 路径按实际程序位置替换即可。中心二进制已经包含网页，不需要额外安装 Node 或部署 `dist`。单独构建采集端不需要前端：`cargo build --release -p work-review-agent`。
 
----
+中心可运行在 Windows、macOS 或 Linux；采集端支持 Windows 和 macOS。CI 检查 Windows、Apple Silicon、Intel Mac 和 Linux 中心。
 
-## 扩展能力（Beta）
-
-<details>
-<summary>桌面化身</summary>
-
-用独立桌宠窗口反馈待机/办公/阅读/会议/音乐/视频等状态。
-
-<img src="docs/桌宠.png" alt="桌面化身" width="220" />
-
-当前仍在持续完善中，会继续补齐交互联动、表情和预设细节。
-
-</details>
-
-<details>
-<summary>Bot 联动（Telegram / 飞书）</summary>
-
-通过本地 API + 多设备注册，从 Telegram / 飞书远程查询记录与生成日报。支持命令：`/devices`、`/report`、`/generate` 等。仅限个人和本人多设备联动使用。
-
-</details>
-
-<details>
-<summary>MCP Server</summary>
-
-通过 stdio 协议将工作记录接入 AI 编码工具（Claude Code / Cursor / VS Code Copilot 等）。
+## 启动中心
 
 ```bash
-cargo build --release -p work-review-mcp-server
+work-review-server --data-dir /absolute/path/hub init --bind 0.0.0.0:47831
+work-review-server --data-dir /absolute/path/hub credentials
+work-review-server --data-dir /absolute/path/hub run
 ```
 
-```json
-{
-  "mcpServers": {
-    "work-review": {
-      "command": "/path/to/work-review-mcp-server",
-      "env": {
-        "WORK_REVIEW_DB_PATH": "/path/to/work_review.db",
-        "WORK_REVIEW_CONFIG_PATH": "/path/to/config.json"
-      }
-    }
-  }
-}
+Windows 使用实际路径，例如 `--data-dir C:\Users\Meta\Project\Workspaces\work-review\data\hub`。省略 `--bind` 时只监听 `127.0.0.1:47831`；多设备接入需要监听可达地址。修改中心配置文件的 `bind` 后重启即可调整地址。
+
+`credentials` 显示两个不同密钥：`agent_token` 交给采集端，`view_token` 输入网页。记录、统计和截图接口均需要密钥。打开 `http://中心地址:47831` 查看。服务自身不提供 TLS；跨公网部署时通过 HTTPS 反向代理访问，也可在自己的 Tailscale 网络中使用。中心密钥可以由 `WORK_REVIEW_AGENT_TOKEN` / `WORK_REVIEW_VIEW_TOKEN` 环境变量覆盖。
+
+## Windows 采集端
+
+先复制中心的采集密钥，再从 PowerShell 初始化。默认数据目录为 `%LOCALAPPDATA%\work-review-agent`。
+
+```powershell
+Get-Clipboard | .\target\release\work-review-agent.exe init --name OMEN --server http://中心地址:47831 --token-stdin
+.\target\release\work-review-agent.exe doctor
+.\target\release\work-review-agent.exe run
 ```
 
-</details>
+如需沿用原应用保存的采集/隐私配置，在初始化命令添加 `--from "$env:APPDATA\work-review\config.json"`。初始化不复制旧模型密钥，也不修改旧配置。
 
----
+登录后无窗口运行：
 
-## 开发
+```powershell
+.\scripts\install-agent.ps1 -BinaryPath .\target\release\work-review-agent.exe
+```
+
+脚本复制程序到数据目录的 `bin`，建立当前用户的交互式登录任务，并立即启动。任务支持电池运行、异常重启；日志保存在数据目录。它不使用系统服务的 session 0，也不需要管理员权限。卸载登录任务使用 `install-agent.ps1 -Uninstall`，保留配置与记录。
+
+## macOS 采集端
+
+复制中心采集密钥后初始化。默认数据目录为 `~/Library/Application Support/work-review-agent`。
 
 ```bash
-npm install
-npm run tauri:dev    # 开发
-npm run tauri:build  # 构建
+pbpaste | ./target/release/work-review-agent init --name MacBook --server http://中心地址:47831 --token-stdin
+./target/release/work-review-agent doctor
+bash scripts/install-agent.sh "$PWD/target/release/work-review-agent"
 ```
 
-要求：Node.js 18+ / Rust stable / Tauri 2 CLI · 技术栈：Tauri 2 + Rust + Svelte 4 + SQLite
+安装脚本复制程序到稳定路径并注册用户 LaunchAgent，在登录的桌面会话中运行。辅助功能权限用于读取窗口标题和浏览器 URL；只有开启截图才需要屏幕录制权限。先将数据目录 `bin/work-review-agent` 的程序加入系统设置相应权限，再通过 `doctor` 检查。可以用 `doctor --request-permissions` 主动触发系统权限引导，后台不会反复弹窗。
 
----
+macOS 安装脚本需要已经登录的图形会话。SSH 中仅能完成编译和诊断，系统隐私权限仍由本人在 Mac 本地确认。卸载：`bash scripts/install-agent.sh --uninstall`，配置与历史保留。
 
-## 社区交流
+## 命令调整
 
-<p align="center"><strong>微信群</strong></p>
+所有采集命令支持 `--data-dir 路径`。配置改动会自动在运行中的采集端重载，设备 UUID 保持不变。
 
-<p align="center">
-  <img src="docs/group/vx.jpg" alt="微信群" width="220" />
-</p>
+```bash
+work-review-agent config
+work-review-agent config --set enabled=false
+work-review-agent config --set enabled=true
+work-review-agent config --set screenshot_interval=10 --set idle_threshold_minutes=5
+work-review-agent config --set storage.screenshots_enabled=true --set ocr_enabled=true
+work-review-agent config --set device.name=MacBook
+work-review-agent status
+work-review-agent sync
+```
 
-<p align="center"><small>如果二维码失效，关注下方公众号获取最新进群方式，或者进 TG 群吐槽</small></p>
+`config` 默认隐藏密钥；替换密钥可以通过 `--token-stdin` 从标准输入读取。`sync` 适合采集进程未运行时手动补传；运行中的采集进程已经拥有同步任务，不允许重复启动同步进程。`run --duration 30` 可用于临时运行验证。
 
----
+隐私支持应用「正常 / 脱敏 / 忽略」、标题关键词与域名黑名单。脱敏会清除标题、URL、截图和 OCR；忽略不会留下活动记录。配置数组可通过 `config --set 'privacy.excluded_domains=["example.com"]'` 或编辑本机 JSON 设置。
 
-<p align="center"><strong>公众号</strong></p>
+## 导入原有记录
 
-<p align="center">
-  <img src="docs/group/gzh.jpg" alt="公众号" width="220" />
-</p>
+原应用数据目录和数据库保持原样。只有执行导入命令才会把旧记录复制到新采集端队列，随后同步至中心。
 
----
+```powershell
+.\target\release\work-review-agent.exe import-legacy `
+  --database 'C:\Users\Meta\Documents\Obsidian\Manage\06记录\workreview\OMEN\workreview.db' `
+  --screenshots-root "$env:APPDATA\work-review"
+.\target\release\work-review-agent.exe sync
+```
 
-<p align="center">
-  <a href="https://t.me/+stYJLlkZbDYwM2Rl"><img src="https://img.shields.io/badge/Telegram-加入群组-26A5E4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram"></a>
-</p>
+导入只读打开原数据库，保留窗口、URL、OCR 和已有目的/备注；截图存在时复制到新目录。旧记录采用结束时间，导入会转换为起始时间。稳定 ID 保证重复导入/上传不重复计数。原配置中的手动待跟进清单仍留在原文件中，集中网页使用每条记录的备注。
 
-## 致谢
+## 开发与验证
 
-- 感谢 [linux.do](https://linux.do/) 社区的交流与讨论支持
-- 桌面化身 BongoCat 资源改编自 [ayangweb/BongoCat](https://github.com/ayangweb/BongoCat) (MIT License)，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+```bash
+npm run dev                 # API 代理至本地 47831 中心
+npm test
+cargo fmt --all --check
+cargo test --workspace
+cargo build --workspace      # 浏览器测试使用 debug 中心
+npm run test:e2e
+```
 
-## License
+Windows 浏览器测试使用已有 Edge；其他平台需要 Playwright Chromium。测试数据库与临时服务位于系统临时目录的 `.agents/`，使用测试密钥与合成记录。具体结果见 [验证记录](docs/validation.md)。
 
-MIT
-
----
-
-## 历史星标
-
-<a href="https://www.star-history.com/#wm94i/Work_Review&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=wm94i/Work_Review&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=wm94i/Work_Review&type=Date" />
-    <img alt="Star History" src="https://api.star-history.com/svg?repos=wm94i/Work_Review&type=Date" />
-  </picture>
-</a>
+代码结构与采集/同步约束见 [设计文档](docs/design/background-hub.md)。原桌面版可从 `lite-phase-2` 分支及 Git 历史恢复。
