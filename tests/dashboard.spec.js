@@ -34,6 +34,13 @@ test('aggregate dashboard, device filters, search and note persistence', async (
   await page.getByRole('button', { name: '保存备注' }).click();
   await expect(page.locator('.note-preview')).toContainText('验证 macOS 记录');
   await page.getByRole('button', { name: '关闭', exact: true }).click();
+  // Let the old all-device response arrive during the search debounce.
+  await page.route('**/api/activities?**', async (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    if (!params.has('device') && !params.has('q'))
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    await route.continue();
+  });
   await page.getByRole('button', { name: '全部设备' }).click();
   await page.getByLabel('搜索记录').fill('后台采集');
   await expect(page.locator('.activity-row')).toHaveCount(1);

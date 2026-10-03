@@ -27,6 +27,8 @@ Collectors connect directly to their configured hub and disable inherited HTTP p
 
 Separate collector and viewer secrets; protect all data and screenshot endpoints. Never put credentials in URLs. No cross-origin access by default. Embed frontend assets in the hub binary. UTC epoch seconds are stored; browser day bounds define query intervals. Clip intervals at day/hour boundaries. Display both union activity time and summed device time so simultaneous use does not inflate the main activity total. Device filters apply to summary, chart, list and report consistently. Timeline uses stable cursor pagination and search applies to the whole selected range.
 
+Invalidate the current query generation as soon as a search input changes, before its debounce timer starts a request. Otherwise an in-flight device refresh can replace search results during that delay. Cancel pending search timers when disconnecting. The browser regression delays an all-device response into this window.
+
 ## Service lifecycle
 
 Provide scripts to install/uninstall a Windows interactive logon task or macOS user LaunchAgent. Collector scripts take explicit data/binary paths, quote paths safely and never require administrator/root privileges; the Windows SYSTEM hub installer requires an elevated session. Live deployment is separately authorized by the user. macOS accessibility/screen-recording permissions require local user approval; `doctor` explains missing permissions, background execution never repeatedly prompts, and permission requests for screen recording occur only when screenshots are enabled.

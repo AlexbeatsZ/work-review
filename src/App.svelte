@@ -119,6 +119,7 @@
     connecting = false;
   }
   function disconnect() {
+    clearTimeout(debounce);
     generation++;
     closeDetail();
     sessionStorage.removeItem('work-review-key');
@@ -135,6 +136,9 @@
   }
   function changeSearch() {
     clearTimeout(debounce);
+    // Invalidate the old query immediately, before the next debounced request.
+    generation++;
+    busy = true;
     debounce = setTimeout(refresh, 350);
   }
   function moveDay(delta) {

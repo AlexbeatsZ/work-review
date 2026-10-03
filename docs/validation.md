@@ -60,3 +60,5 @@ ROG 的数据目录限制 Meta/SYSTEM/Administrators 访问，查看密钥单独
 部署提交 `61eee42` 的 [四平台 CI](https://github.com/AlexbeatsZ/work-review/actions/runs/37157374619) 全部通过；后续原生 Mac 采集修正已通过本地 Windows/Mac 工作区检查。
 
 原生采集部署后连续观察 12 次、约 2 分钟：每次均为 `recording`，期间新增 11 条记录，未出现窗口读取错误。ROG 再次确认两端最新记录已入库。签名升级过程未重新申请权限。
+
+原生采集提交 `051d920` 的 CI 中，Rust/编译检查通过，但 Linux 浏览器测试暴露搜索 debounce 期间旧设备查询仍能更新列表的时序问题。加入 150ms 延迟复现后，本地得到同一失败；搜索输入变化时立即使旧查询失效，退出连接时取消 debounce，重新构建中心后 2 项浏览器测试通过。
