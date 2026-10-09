@@ -30,7 +30,7 @@ Window metadata now uses native NSWorkspace/AX calls. The deployed System Events
 
 ## Lifecycle and checks
 
-Windows tasks permit battery operation, have no execution time limit and retry failed exits after one minute. Mac's LaunchAgent uses `RunAtLoad`, `KeepAlive`, the logged-in Aqua session and a 30-second restart throttle. The ROG hub needs no interactive login. PowerShell startup wrappers apply execution policy only to their own process; no global execution policy was changed. Windows installers explicitly stop the exact installed child binary after stopping its task wrapper, preventing stale processes from locking updates.
+Windows tasks permit battery operation, have no execution time limit and retry failed exits after one minute. Mac's LaunchAgent uses `RunAtLoad`, `KeepAlive`, the logged-in Aqua session and a 30-second restart throttle. The ROG hub needs no interactive login. Its PowerShell wrapper applies execution policy only to its own process. The OMEN collector task executes `data\agent\bin\run-agent.exe`, a GUI-subsystem launcher built from `scripts/run-agent-launcher.cs` by Windows' existing .NET Framework compiler. It starts the collector without allocating a console, appends `agent.stdout.log` / `agent.stderr.log` and returns the collector's exit code. Installers stop only the exact installed launcher and child paths before updates; no global execution policy or terminal default is changed.
 
 ```powershell
 # OMEN

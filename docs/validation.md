@@ -66,3 +66,13 @@ ROG 的数据目录限制 Meta/SYSTEM/Administrators 访问，查看密钥单独
 最终代码提交 `261af74` 的 [四平台 CI](https://github.com/AlexbeatsZ/work-review/actions/runs/37158285137) 全部通过，包含 Windows/Linux 浏览器回归。修正后的 Windows Release 中心已重新部署至 ROG；实际页面登录、两设备状态与最新记录查询再次通过。macOS arm64 中心构建产物也已刷新，正式 Mac 仍只运行采集端。
 
 Mac 部署临时目录及临时权限/签名辅助任务已清理。本机与 ROG 临时采集/查看密钥副本已逐项删除。Windows 本机部署临时目录的文件清理被自动审批拒绝，返回 `blocked by policy`；剩余无密钥脚本和源码归档保留，正式项目数据与后台进程不受影响。
+
+## OMEN 无窗口自启动修复：2026-10-09
+
+登录任务 `WorkReviewAgent-Meta` 直接启动 Scoop PowerShell 7.6.6，带有 `-WindowStyle Hidden`，但同一启动时刻出现 Windows Terminal 1.24.12741.0，窗口标题就是该 `pwsh.exe` 路径。采集端实际处于 `recording`。把同一任务换成 Windows PowerShell 5.1 后仍出现同类窗口，确认仅换 shell 不能解决控制台委派。
+
+任务改为 GUI 子系统的 `run-agent.exe`，以 `UseShellExecute=false` / `CreateNoWindow=true` 启动原采集端。实际运行安装脚本并重启任务后，启动器和采集端都没有主窗口，Windows Terminal 进程消失；任务维持用户交互式 Limited 权限、电池策略、单实例、无限运行时间和一分钟失败重试。原设备 UUID、数据目录和采集配置沿用。
+
+`pwsh -NoProfile -File scripts/test-agent-launcher.ps1` 通过：真实控制台测试子进程的 `GetConsoleWindow()` 为零，带空格和中文的数据目录参数准确传入，stdout/stderr 追加保留，子进程退出码 23 准确返回，缺失子程序返回 1 并记录启动错误。测试临时目录已清理；安装器脚本语法与 `git diff --check` 通过。没有改 Rust 采集/存储逻辑，未重复运行跨平台工作区测试，也没有强制注销或重启。
+
+本次检查中，采集仍正常新增本地记录，但配置的 ROG 中心连接报错，未验证当前远端上传成功；待同步记录保留在本机。此项与终端窗口启动问题分开记录。

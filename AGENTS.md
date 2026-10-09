@@ -11,12 +11,14 @@ Work Review is a personal activity recorder: quiet Windows/macOS agents collect 
 - Deployed: OMEN interactive logon collector, Mac GUI LaunchAgent collector and ROG SYSTEM startup hub. Hub URL `http://100.106.169.46:47831/` uses the existing Tailscale network; 54,006 old OMEN records were imported read-only and uploaded. Defaults and device identities are preserved. See [deployment](docs/deployment.md) for paths, lifecycle and rollback.
 - Mac runs the user-authorized, certificate-signed `bin/work-review-agent` in its project. Window metadata uses direct native AppKit/AX calls, avoiding recurring System Events subprocess timeouts. New records are being captured; screen recording remains unapproved/off. macOS updates must preserve the existing certificate and runtime path.
 - Design index: [background-hub](docs/design/background-hub.md). Read before changing capture, sync, authentication, time accounting or service lifecycle.
+- OMEN's Windows login action now runs a GUI-subsystem `data/agent/bin/run-agent.exe` launcher, compiled using Windows' existing .NET Framework. It starts the collector with `CreateNoWindow`, appends logs and propagates its exit code; the installer and release package include the launcher source.
 
 # Active Work
 
 - Completed: headless capture/sync, Chinese hub dashboard, CLI configuration reload, stable identity, opt-in logon/LaunchAgent scripts and read-only legacy import.
 - Completed: storage/time/privacy/authentication/offline sync/lifecycle tests, browser tests and both native release builds. Four-platform GitHub CI passed for core refactor `d06a7d7`; see [validation](docs/validation.md).
 - Completed: authorized deployment, direct hub networking, narrow Tailscale firewall rule, old desktop startup retirement and existing-certificate macOS signing. Both collectors generate new records that arrive at ROG, including after task/LaunchAgent restarts. Native capture and dashboard search fixes in code commit `261af74` passed all four CI platforms; see [validation](docs/validation.md).
+- Completed 2026-10-09: repaired OMEN's blank Windows Terminal at login. Direct PowerShell 7 and 5.1 task actions both reproduced it; the no-console launcher and actual installer restart pass without a Terminal window. Capture remains healthy. The configured ROG hub was unreachable during this check; unsynchronized records remain local. Cold boot/logout was not forced.
 
 # Build / Run / Test
 
@@ -24,6 +26,7 @@ Work Review is a personal activity recorder: quiet Windows/macOS agents collect 
 - `npm test`, `cargo fmt --all --check`, `cargo test --workspace --locked` after shared capture/storage/protocol changes.
 - `cargo build -p work-review-server --locked` then `npm run test:e2e` checks the real hub and desktop/mobile frontend. Windows uses installed Edge; Linux CI installs Playwright Chromium in its isolated runner.
 - Hub: `init`, `credentials`, `run`. Agent: `init`, `doctor`, `run`, `status`, `config --set ...`, `sync`, `import-legacy`. All support `--data-dir`. Detailed platform commands are in [README](README.md).
+- After Windows launcher or installer changes: `pwsh -NoProfile -File scripts/test-agent-launcher.ps1`, PowerShell script syntax checks, then a targeted installed-task restart when authorized. The launcher regression also runs in Windows CI; it checks a real console child, path quoting, log append, exit status and startup failures.
 
 # Durable Lessons
 

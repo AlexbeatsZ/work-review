@@ -66,6 +66,8 @@ Get-Clipboard | .\target\release\work-review-agent.exe init --name OMEN --server
 
 脚本复制程序到数据目录的 `bin`，建立当前用户的交互式登录任务，并立即启动。任务支持电池运行、异常重启；日志保存在数据目录。它不使用系统服务的 session 0，也不需要管理员权限。卸载登录任务使用 `install-agent.ps1 -Uninstall`，保留配置与记录。
 
+安装器使用 Windows 自带的 .NET Framework 编译器生成无控制台启动器；`run-agent-launcher.cs` 必须与安装脚本放在一起。启动器直接以 `CreateNoWindow` 运行采集端，避免 Windows Terminal 接管 PowerShell 后弹出空白窗口；不需要另装运行时。
+
 ## macOS 采集端
 
 复制中心采集密钥后初始化。默认数据目录为 `~/Library/Application Support/work-review-agent`。

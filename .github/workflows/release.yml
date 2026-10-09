@@ -40,7 +40,7 @@ jobs:
           for binary in target/${{ matrix.target }}/release/work-review-agent{,.exe} target/${{ matrix.target }}/release/work-review-server{,.exe}; do
             if [ -f "$binary" ]; then cp "$binary" package/; fi
           done
-          cp scripts/install-agent.ps1 scripts/run-agent.ps1 scripts/install-agent.sh scripts/install-hub.ps1 scripts/run-hub.ps1 package/scripts/
+          cp scripts/install-agent.ps1 scripts/run-agent.ps1 scripts/run-agent-launcher.cs scripts/install-agent.sh scripts/install-hub.ps1 scripts/run-hub.ps1 package/scripts/
           cp README.md package/
           for binary in package/work-review-agent package/work-review-server package/scripts/install-agent.sh; do
             if [ -f "$binary" ]; then chmod +x "$binary"; fi
