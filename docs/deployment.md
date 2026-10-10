@@ -10,7 +10,7 @@ Deployment authorized by the user and performed on 2026-10-04 (Asia/Singapore). 
 
 ## Access and identities
 
-- Hub URL: `http://100.106.169.46:47831/`, reachable through the existing Tailscale network. It listens only on ROG's Tailscale IPv4 address. Firewall rule `WorkReviewHub-Tailscale` allows TCP 47831 from `100.64.0.0/10` to this address; no LAN/public listener or router changes.
+- Hub URL: `http://100.106.169.46:40001/`, reachable through the existing Tailscale network. It listens only on ROG's Tailscale IPv4 address. Firewall rule `WorkReviewHub-Tailscale` allows TCP 40001 from `100.64.0.0/10` to this address; no LAN/public listener or router changes. Both collector configs use this origin. Port 47831 was retired on 2026-10-10 after it and adjacent ports failed actual bind probes with WSAEADDRINUSE despite no visible listener or matching configured exclusion; the occupying source is unconfirmed.
 - OMEN device UUID: `40ab0a86-143c-48d6-811f-a39d8d7ccbeb`.
 - Mac device UUID: `8403a563-2601-4bc7-9579-9c25428d17a8`.
 - Hub keys are in ROG's private `data\hub\config.json`. The collector key is present only in agent configs; the viewer key is also saved privately on OMEN as `data\rog-view-key.txt` for convenient login. These files are excluded from Git. Hub data ACL allows Meta, SYSTEM and Administrators; the local viewer-key file is limited to Meta and SYSTEM.
@@ -30,7 +30,7 @@ Window metadata now uses native NSWorkspace/AX calls. The deployed System Events
 
 ## Lifecycle and checks
 
-Windows tasks permit battery operation, have no execution time limit and retry failed exits after one minute. Mac's LaunchAgent uses `RunAtLoad`, `KeepAlive`, the logged-in Aqua session and a 30-second restart throttle. The ROG hub needs no interactive login. Its PowerShell wrapper applies execution policy only to its own process. The OMEN collector task executes `data\agent\bin\run-agent.exe`, a GUI-subsystem launcher built from `scripts/run-agent-launcher.cs` by Windows' existing .NET Framework compiler. It starts the collector without allocating a console, appends `agent.stdout.log` / `agent.stderr.log` and returns the collector's exit code. Installers stop only the exact installed launcher and child paths before updates; no global execution policy or terminal default is changed.
+Windows tasks permit battery operation, have no execution time limit and retry failed exits after one minute. The hub additionally waits five seconds and retries when its configured address is not available yet, covering Tailscale adapter startup; other bind errors still exit for task failure handling. Mac's LaunchAgent uses `RunAtLoad`, `KeepAlive`, the logged-in Aqua session and a 30-second restart throttle. The ROG hub needs no interactive login. Its PowerShell wrapper applies execution policy only to its own process. The OMEN collector task executes `data\agent\bin\run-agent.exe`, a GUI-subsystem launcher built from `scripts/run-agent-launcher.cs` by Windows' existing .NET Framework compiler. It starts the collector without allocating a console, appends `agent.stdout.log` / `agent.stderr.log` and returns the collector's exit code. Installers stop only the exact installed launcher and child paths before updates; no global execution policy or terminal default is changed.
 
 ```powershell
 # OMEN
@@ -54,7 +54,7 @@ launchctl kickstart -k gui/$(id -u)/io.work-review.agent
 The live browser check can be repeated without putting secrets in arguments:
 
 ```bash
-node scripts/check-deployment.mjs http://100.106.169.46:47831 data/rog-view-key.txt
+node scripts/check-deployment.mjs http://100.106.169.46:40001 data/rog-view-key.txt
 ```
 
 It accepts a private viewer-key text file or hub config, logs only sanitized device status and saves a local screenshot under `artifacts/deployment/`. The browser check does not edit records. Cold boot / logout were not forced during deployment; the effective startup definitions and live process sessions were checked directly.
@@ -62,3 +62,5 @@ It accepts a private viewer-key text file or hub config, logs only sanitized dev
 ## Rollback
 
 Use `scripts/install-agent.ps1 -Uninstall` on OMEN, `bash scripts/install-agent.sh --uninstall` on Mac, and elevated `scripts/install-hub.ps1 -DataDir <hub-data> -Uninstall` on ROG. These remove startup registrations and preserve records. Remove only the `WorkReviewHub-Tailscale` firewall rule if retiring the hub. Restore the saved old HKCU Run entry from `legacy-startup.json` only after stopping the replacement collector to avoid duplicate recording. Device UUIDs and config files should be kept across updates.
+
+The 2026-10-10 repair retains the previous ROG hub executable at `data\hub\bin\work-review-server.previous.exe`. Stop the hub task and exact installed child before restoring it; keep the currently working port 40001. Reverting the port additionally requires updating both collector `server_url` settings and the single existing firewall port filter, and should only be attempted after an actual bind probe succeeds on 47831.

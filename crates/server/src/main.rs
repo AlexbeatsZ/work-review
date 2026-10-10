@@ -1,8 +1,11 @@
 use anyhow::{ensure, Result};
 use clap::{Parser, Subcommand};
 use std::{
+    future::Future,
+    io,
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 use work_review_core::{
     config::save_json,
@@ -26,6 +29,22 @@ enum Command {
     },
     Run,
     Credentials,
+}
+
+async fn bind_when_ready<T, F, Fut>(mut bind: F, retry_delay: Duration) -> io::Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = io::Result<T>>,
+{
+    loop {
+        match bind().await {
+            Err(error) if error.kind() == io::ErrorKind::AddrNotAvailable => {
+                log::warn!("Hub address is not ready; waiting for the network: {error}");
+                tokio::time::sleep(retry_delay).await;
+            }
+            result => return result,
+        }
+    }
 }
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -58,7 +77,11 @@ async fn main() -> Result<()> {
                 config.view_token = value;
             }
             config.validate()?;
-            let listener = tokio::net::TcpListener::bind(&config.bind).await?;
+            let listener = bind_when_ready(
+                || tokio::net::TcpListener::bind(&config.bind),
+                Duration::from_secs(5),
+            )
+            .await?;
             println!("Work Review listening on {}", listener.local_addr()?);
             let hub = Arc::new(Hub {
                 store: Mutex::new(Store::open(&cli.data_dir.join("hub.db"))?),
@@ -73,4 +96,49 @@ async fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn waits_for_the_address_then_opens_a_real_listener() {
+        let mut attempts = 0;
+        let listener = bind_when_ready(
+            || {
+                attempts += 1;
+                let attempt = attempts;
+                async move {
+                    if attempt <= 2 {
+                        Err(io::Error::from(io::ErrorKind::AddrNotAvailable))
+                    } else {
+                        tokio::net::TcpListener::bind("127.0.0.1:0").await
+                    }
+                }
+            },
+            Duration::ZERO,
+        )
+        .await
+        .unwrap();
+        assert_eq!(attempts, 3);
+        assert!(listener.local_addr().unwrap().ip().is_loopback());
+    }
+
+    #[tokio::test]
+    async fn other_bind_errors_exit_without_retrying() {
+        for kind in [io::ErrorKind::AddrInUse, io::ErrorKind::PermissionDenied] {
+            let mut attempts = 0;
+            let result: io::Result<()> = bind_when_ready(
+                || {
+                    attempts += 1;
+                    std::future::ready(Err(io::Error::from(kind)))
+                },
+                Duration::ZERO,
+            )
+            .await;
+            assert_eq!(result.unwrap_err().kind(), kind);
+            assert_eq!(attempts, 1);
+        }
+    }
 }

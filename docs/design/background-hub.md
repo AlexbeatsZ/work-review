@@ -23,6 +23,8 @@ Immutable UUID records are queued locally. Server ingestion is transactional and
 
 Collectors connect directly to their configured hub and disable inherited HTTP proxies. A Windows hub may run under SYSTEM at startup because it does not inspect a user's desktop; collectors still require an interactive user session. Login/startup wrapper invocations use process-scoped PowerShell execution policy so deployment does not change global policy.
 
+The hub's configured IP can appear after the boot task starts, particularly for a Tailscale adapter. Retry only `AddrNotAvailable` bind failures inside the same running hub every five seconds. Keep the configured address and data-directory lock while waiting; `AddrInUse`, permission failures and invalid config still exit. A missing boot-time address must not permanently consume the task's finite restart attempts. A live Windows bind conflict without a visible TCP owner still requires an actual alternate-port probe; do not infer a free port solely from connection enumeration.
+
 ## Hub and time
 
 Separate collector and viewer secrets; protect all data and screenshot endpoints. Never put credentials in URLs. No cross-origin access by default. Embed frontend assets in the hub binary. UTC epoch seconds are stored; browser day bounds define query intervals. Clip intervals at day/hour boundaries. Display both union activity time and summed device time so simultaneous use does not inflate the main activity total. Device filters apply to summary, chart, list and report consistently. Timeline uses stable cursor pagination and search applies to the whole selected range.
