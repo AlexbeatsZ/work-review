@@ -20,6 +20,9 @@ impl CaptureClock {
     }
 }
 
+#[cfg(target_os = "macos")]
+const WINDOW_READ_RESTART_SECONDS: i64 = 180;
+
 pub struct Sample {
     pub activity: Option<Activity>,
     pub screenshot_path: Option<std::path::PathBuf>,
@@ -69,6 +72,13 @@ pub fn sample(
             return Ok(empty("error", Some(format!("前台窗口读取失败: {error}"))));
         }
     };
+    #[cfg(target_os = "macos")]
+    if let Some(since) = crate::macos_window::window_read_failing_since() {
+        // Exiting lets launchd's KeepAlive start a fresh process with a working connection.
+        if chrono::Utc::now().timestamp() - since >= WINDOW_READ_RESTART_SECONDS {
+            anyhow::bail!("前台窗口标题持续读取失败，重启采集进程");
+        }
+    }
     if window.is_minimized || crate::monitor::is_system_process(&window.app_name) {
         clock.reset();
         return Ok(empty("idle", None));

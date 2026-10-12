@@ -10,7 +10,33 @@ use objc::{class, msg_send, sel, sel_impl};
 use std::{
     ffi::{c_void, CStr},
     os::raw::c_char,
+    sync::atomic::{AtomicI64, Ordering},
 };
+
+/// Start of the current run of failed window reads; 0 while reads succeed.
+static WINDOW_READ_FAILING_SINCE: AtomicI64 = AtomicI64::new(0);
+
+/// A long-running process can lose its accessibility connection (every read then returns
+/// kAXErrorCannotComplete until restart), so the caller restarts once failures persist.
+pub fn window_read_failing_since() -> Option<i64> {
+    match WINDOW_READ_FAILING_SINCE.load(Ordering::Relaxed) {
+        0 => None,
+        since => Some(since),
+    }
+}
+
+fn note_window_read(ok: bool) {
+    if ok {
+        WINDOW_READ_FAILING_SINCE.store(0, Ordering::Relaxed);
+    } else {
+        let _ = WINDOW_READ_FAILING_SINCE.compare_exchange(
+            0,
+            chrono::Utc::now().timestamp(),
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        );
+    }
+}
 
 #[link(name = "ApplicationServices", kind = "framework")]
 extern "C" {
@@ -130,7 +156,12 @@ pub fn frontmost_window() -> Result<FrontmostWindow> {
         }
         let application = OwnedCF(element);
         AXUIElementSetMessagingTimeout(application.0, 0.8);
-        let (title, bounds) = if let Some(window) = attribute(application.0, "AXFocusedWindow")? {
+        // The application itself is known from NSWorkspace; a failed window read only loses
+        // the title, so the activity is still recorded under the application name.
+        let window = (|| -> Result<(String, Option<WindowBounds>)> {
+            let Some(window) = attribute(application.0, "AXFocusedWindow")? else {
+                return Ok((String::new(), None));
+            };
             if CFGetTypeID(window.0) != AXUIElementGetTypeID() {
                 return Err(AppError::Unknown("辅助功能返回了无效的窗口类型".into()));
             }
@@ -138,10 +169,10 @@ pub fn frontmost_window() -> Result<FrontmostWindow> {
             let title = attribute(window.0, "AXTitle")?
                 .and_then(|value| cf_string(value.0))
                 .unwrap_or_default();
-            (title, window_bounds(window.0))
-        } else {
-            (String::new(), None)
-        };
+            Ok((title, window_bounds(window.0)))
+        })();
+        note_window_read(window.is_ok());
+        let (title, bounds) = window.unwrap_or_default();
         Ok(FrontmostWindow {
             app_name,
             bundle_identifier,

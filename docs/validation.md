@@ -86,3 +86,11 @@ ROG SYSTEM 任务处于 Ready / result 1，开机启动日志报 `10049`（绑�
 服务启动逻辑只对 `AddrNotAvailable` 每五秒重试，覆盖开机时网络适配器尚未就绪的情况；端口冲突和权限错误仍正常退出。`cargo test -p work-review-server --locked` 的 2 项绑定策略测试及 2 项 HTTP 测试通过，Release 编译、Rust 格式和 diff 检查通过。真实新程序以测试数据目录绑定非本地 `192.0.2.123:0` 时持续运行超过六秒，记录了两次等待，验证实际入口没有提前退出；测试目录已删除。
 
 实际恢复验证：中心健康接口和网页均为 HTTP 200，认证设备接口确认两个原 UUID 和新鲜心跳。OMEN 的约 4600 条积压持续下降并实测归零，之后中心查询确认收到 `2026-10-10 22:00:13 +08:00` 的新记录（查询时距当前 39 秒）。Mac 同步错误为空、pending 0，处于锁屏状态；本次验证了同步与心跳，没有重新测试解锁后的前台窗口采集。OMEN 的无窗口启动器仍在运行，没有 Windows Terminal 窗口。没有强制重启或注销，冷启动网络时序由实际程序的非本地地址测试覆盖。
+
+## Mac 前台窗口读取卡死修复：2026-10-13
+
+ROG 中心显示 Mac 处于 `error`：`前台窗口读取失败: macOS AXFocusedWindow: AX error -25204`，最后一条记录是 10-12 14:50。采集进程自 10-12 11:52 起持续运行，辅助功能授权仍有效。检查时用户正在使用 Chrome（输入空闲 0 秒、未锁屏），同样报错，说明不是某个应用的问题；`launchctl kickstart -k` 重启后立即恢复 `recording`。判断为长时间运行的进程丢失了辅助功能连接，此后每次读取都返回 kAXErrorCannotComplete，直到重启。
+
+修复：窗口读取失败时仍按 NSWorkspace 的前台应用名记录（标题为空），不再整条丢弃；失败持续 3 分钟后采集进程以错误退出，由 LaunchAgent 的 KeepAlive 重新启动。Mac 上 `cargo test --locked -p work-review-agent` 全部通过，`cargo fmt --all --check` 通过。
+
+部署：SSH 会话里 `codesign` 返回 `errSecInternalComponent`（登录钥匙串私钥不可用），安装脚本在停止采集前中止，原程序继续运行。改为用一次性 GUI LaunchAgent 在用户会话里执行 `install-agent.sh`，沿用 `Local Development Code Signing` 证书和原程序路径，辅助功能授权保留；临时 LaunchAgent 已删除。安装后中心收到 Chrome 与 Obsidian 的新记录。新进程启动时 macOS 弹出“work-review-agent 想要控制 Google Chrome”（读取浏览器网址用的自动化权限），是否允许由用户决定；不允许也照常记录窗口标题。

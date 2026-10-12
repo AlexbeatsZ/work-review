@@ -41,6 +41,8 @@ macOS updates use a stable installed path. An optional existing signing identity
 
 Frontmost macOS application/window metadata uses NSWorkspace and direct AXUIElement calls with bounded messaging timeouts and owned Core Foundation values. Do not depend on System Events/osascript for the core capture: live GUI LaunchAgent deployment exposed recurring subprocess timeouts even while SSH probes succeeded. Browser-specific optional URL helpers remain separate; their failure must not suppress the activity record.
 
+A long-running collector can lose its accessibility connection: every AX read then returns kAXErrorCannotComplete (-25204) until the process restarts. A failed window read still records the NSWorkspace application with an empty title; after three minutes of continuous failures the collector exits with an error so the LaunchAgent's KeepAlive starts a fresh process.
+
 ## Existing records
 
 Provide an explicit read-only import of old `workreview.db` with deterministic new IDs so repeated imports do not duplicate data. Preserve screenshot, OCR and intent-note fields where present. Old data and configuration remain in place. Import copies into the new agent queue; it never opens the old database for writing.
